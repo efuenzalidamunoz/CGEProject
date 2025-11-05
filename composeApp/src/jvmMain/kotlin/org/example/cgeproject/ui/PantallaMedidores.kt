@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,7 +134,8 @@ class PantallaMedidores {
                     .fillMaxSize()
                     .background(backgroundColor)
                     .padding(paddingValues)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -140,12 +144,16 @@ class PantallaMedidores {
                         medidoresFiltrados = onSearch(it)
                     },
                     label = { Text("Buscar por RUT de Cliente o Código de Medidor") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(0.7f)
+
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(medidoresFiltrados) { medidor ->
                         MedidorItem(
                             medidor = medidor,
@@ -184,7 +192,14 @@ class PantallaMedidores {
         var rutCliente by remember { mutableStateOf("") }
         var direccion by remember { mutableStateOf("") }
         var potencia by remember { mutableStateOf("") }
+        var factorPotencia by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
+
+        LaunchedEffect(tipo) {
+            if (tipo == TipoMedidor.MONOFASICO) {
+                factorPotencia = ""
+            }
+        }
 
         Column(
             modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp),
@@ -223,8 +238,16 @@ class PantallaMedidores {
                         label = { Text("Potencia Max (kW)") },
                         modifier = Modifier.fillMaxWidth()
                     )
+
                     SelectorTipoMedidor(tipo, onSelect = { tipo = it })
 
+                    OutlinedTextField(
+                        value = factorPotencia,
+                        onValueChange = { factorPotencia = it },
+                        label = { Text("Factor de Potencia (ej. 0.95)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = tipo == TipoMedidor.TRIFASICO
+                    )
 
                     error?.let {
                         Text(
@@ -239,8 +262,15 @@ class PantallaMedidores {
                         Button(
                             onClick = {
                                 val pot = potencia.toDoubleOrNull()
+                                val factor = factorPotencia.toDoubleOrNull()
+
                                 if (codigo.isBlank() || rutCliente.isBlank() || direccion.isBlank() || pot == null) {
-                                    error = "Todos los campos son obligatorios."
+                                    error = "Todos los campos obligatorios deben completarse y la potencia debe ser un número."
+                                    return@Button
+                                }
+
+                                if (tipo == TipoMedidor.TRIFASICO && factor == null) {
+                                    error = "Para medidor Trifásico, ingrese un factor de potencia válido."
                                     return@Button
                                 }
 
@@ -266,10 +296,11 @@ class PantallaMedidores {
                                         true,
                                         "",
                                         pot,
-                                        1.0
-                                    ) // Factor default
+                                        factor ?: 1.0
+                                    )
                                 }
 
+                                error = null
                                 onSave(medidor, rutCliente)
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = blue)
@@ -306,12 +337,18 @@ class PantallaMedidores {
 
     @Composable
     private fun MedidorItem(medidor: Medidor, onClick: () -> Unit, onDelete: () -> Unit) {
-        Card(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ElevatedCard(
+            modifier = Modifier.clickable(onClick = onClick),
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = 8.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = RoundedCornerShape(8.dp)
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {

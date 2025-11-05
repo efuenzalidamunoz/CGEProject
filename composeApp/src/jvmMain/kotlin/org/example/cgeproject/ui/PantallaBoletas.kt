@@ -18,18 +18,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.example.cgeproject.dominio.Boleta
-import org.example.cgeproject.persistencia.BoletaRepositorio
+import org.example.cgeproject.persistencia.BoletaRepoImpl
+import org.example.cgeproject.persistencia.FileSystemStorageDriver
+import org.example.cgeproject.persistencia.PersistenciaDatos
 import org.example.cgeproject.servicios.BoletaService
 import org.example.cgeproject.servicios.PdfService
 
-// TODO(faltan agregar mas opciones a la parte de pantalla boletas o rehacerla de cero)
 class PantallaBoletas() {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
+    private val repo = BoletaRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
     fun PantallaPrincipal() {
         var idCliente by remember { mutableStateOf("") }
+        var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
         var mostrarLista by remember { mutableStateOf(false) }
 
         Column(
@@ -46,13 +49,17 @@ class PantallaBoletas() {
             bodyBoletas(
                 idCliente = idCliente,
                 onIdClienteChange = { idCliente = it },
-                mostrarLista = mostrarLista,
-                onToggleLista = { mostrarLista = !mostrarLista }
+                onSearch = {
+                    boletas = repo.listarPorCliente(idCliente)
+                    mostrarLista = true
+                },
+                onToggleLista = { mostrarLista = !mostrarLista },
+                isListaVisible = mostrarLista
             )
 
             if (mostrarLista && idCliente.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(24.dp))
-                MostrarTablaBoletas(idCliente)
+                MostrarTablaBoletas(idCliente, boletas)
             }
         }
     }
@@ -92,7 +99,8 @@ class PantallaBoletas() {
     private fun bodyBoletas(
         idCliente: String,
         onIdClienteChange: (String) -> Unit,
-        mostrarLista: Boolean,
+        onSearch: () -> Unit,
+        isListaVisible: Boolean,
         onToggleLista: () -> Unit
     ) {
         ElevatedCard(
@@ -138,9 +146,9 @@ class PantallaBoletas() {
                 )
                 Spacer(modifier = Modifier.height(50.dp))
                 BotonBusqueda(
-                    idCliente = idCliente,
-                    mostrarLista = mostrarLista,
-                    onToggleLista = onToggleLista,
+                    onSearch = onSearch,
+                    isListaVisible = isListaVisible,
+                    onToggleLista = onToggleLista
                 )
             }
         }
@@ -184,43 +192,24 @@ class PantallaBoletas() {
 
     @Composable
     private fun BotonBusqueda(
-        idCliente: String,
-        mostrarLista: Boolean,
-        onToggleLista: () -> Unit,
+        onSearch: () -> Unit,
+        isListaVisible: Boolean,
+        onToggleLista: () -> Unit
     ) {
-        var error by remember { mutableStateOf<String?>(null) }
-        var ok by remember { mutableStateOf<String?>(null) }
-
-
         Button(
-            onClick = onToggleLista,
+            onClick = {
+                if (isListaVisible) onToggleLista() else onSearch()
+            },
             colors = ButtonDefaults.buttonColors(
                 containerColor = blue
             )
         ) {
-            Text(text = if (mostrarLista) "Ocultar resultados" else "Buscar")
+            Text(text = if (isListaVisible) "Ocultar resultados" else "Buscar")
         }
     }
 
     @Composable
-    private fun MostrarTablaBoletas(idCliente: String) {
-        val boletas = remember {
-            mutableStateListOf(
-                BoletaItem("15/10/2024", "350", "$50.000"),
-                BoletaItem("15/09/2024", "420", "$65.000"),
-                BoletaItem("15/08/2024", "280", "$42.000"),
-                BoletaItem("15/07/2024", "395", "$58.500"),
-                BoletaItem("15/06/2024", "310", "$47.000"),
-                BoletaItem("15/05/2024", "445", "$70.250"),
-                BoletaItem("15/04/2024", "268", "$39.800"),
-                BoletaItem("15/03/2024", "380", "$55.200"),
-                BoletaItem("15/02/2024", "505", "$78.900"),
-                BoletaItem("15/01/2024", "425", "$66.300"),
-                BoletaItem("15/12/2023", "315", "$48.500"),
-                BoletaItem("15/11/2023", "290", "$43.700")
-            )
-        }
-
+    private fun MostrarTablaBoletas(idCliente: String, boletas: List<Boleta>) {
         ElevatedCard(
             elevation = CardDefaults.elevatedCardElevation(
                 defaultElevation = 8.dp
@@ -272,9 +261,16 @@ class PantallaBoletas() {
 
                 HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
 
-                boletas.forEach { boleta ->
-                    FilasTabla(boleta, blue)
-                    HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                if (boletas.isEmpty()) {
+                    Text(
+                        "No se encontraron boletas para este cliente.",
+                        modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    boletas.forEach { boleta ->
+                        FilasTabla(boleta, blue)
+                        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                    }
                 }
             }
         }
@@ -292,7 +288,7 @@ class PantallaBoletas() {
     }
 
     @Composable
-    private fun FilasTabla(boleta: BoletaItem, blue: Color) {
+    private fun FilasTabla(boleta: Boleta, blue: Color) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,19 +297,19 @@ class PantallaBoletas() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = boleta.fechaEmision,
+                text = "${boleta.getMes()}/${boleta.getAnio()}",
                 fontSize = 14.sp,
                 color = Color.DarkGray,
                 modifier = Modifier.weight(1.5f)
             )
             Text(
-                text = boleta.consumoKwh,
+                text = "%.2f".format(boleta.getKwhTotal()),
                 fontSize = 14.sp,
                 color = Color.DarkGray,
                 modifier = Modifier.weight(1.5f)
             )
             Text(
-                text = boleta.totalPagar,
+                text = "$%.2f".format(boleta.getDetalle().total),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = blue,
@@ -330,11 +326,4 @@ class PantallaBoletas() {
             }
         }
     }
-
-    // Para probar nomas
-    data class BoletaItem(
-        val fechaEmision: String,
-        val consumoKwh: String,
-        val totalPagar: String
-    )
 }
