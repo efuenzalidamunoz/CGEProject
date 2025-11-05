@@ -2,14 +2,44 @@ package org.example.cgeproject.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,6 +48,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Cliente
 import org.example.cgeproject.dominio.EstadoCliente
+import org.example.cgeproject.persistencia.ClienteRepoImpl
+import org.example.cgeproject.persistencia.FileSystemStorageDriver
+import org.example.cgeproject.persistencia.PersistenciaDatos
 
 // Enum para controlar qué pantalla se muestra
 private enum class Pantalla {
@@ -29,24 +62,20 @@ class PantallaClientes {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
+    // --- Repositorio ---
+    private val repo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
+
     @Composable
     fun PantallaPrincipal() {
         var pantallaActual by remember { mutableStateOf(Pantalla.LISTA) }
         var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
+        var clientes by remember { mutableStateOf(repo.listar()) }
 
-        // --- Datos de Ejemplo para visualizar el Frontend ---
-        // TODO: Reemplazar esta lista con los datos de tu ViewModel o Repositorio
-        val clientesDeEjemplo = listOf(
-            Cliente("111-1", "Ana Torres", "ana.t@example.com", "Calle Falsa 123", EstadoCliente.ACTIVO),
-            Cliente("222-2", "Luis Vera", "luis.v@example.com", "Av. Siempre Viva 742", EstadoCliente.ACTIVO),
-            Cliente("333-3", "Carla Soto", "carla.s@example.com", "Pasaje Corto 45", EstadoCliente.INACTIVO)
-        )
-        // --- Fin de Datos de Ejemplo ---
 
         when (pantallaActual) {
             Pantalla.LISTA -> {
                 GestionClientesContent(
-                    clientes = clientesDeEjemplo,
+                    clientes = clientes,
                     onAddCliente = {
                         clienteSeleccionado = null
                         pantallaActual = Pantalla.FORMULARIO
@@ -56,8 +85,8 @@ class PantallaClientes {
                         pantallaActual = Pantalla.FORMULARIO
                     },
                     onDeleteCliente = { cliente ->
-                        // TODO: Implementar la lógica para eliminar el cliente en tu ViewModel/Repositorio
-                        println("Lógica para eliminar a: ${cliente.getNombre()}")
+                        repo.eliminar(cliente.getRut())
+                        clientes = repo.listar() // refresh
                     }
                 )
             }
@@ -67,8 +96,12 @@ class PantallaClientes {
                     cliente = clienteSeleccionado,
                     onNavigateBack = { pantallaActual = Pantalla.LISTA },
                     onSaveCliente = { clienteGuardado ->
-                        // TODO: Implementar la lógica para crear o actualizar el cliente en tu ViewModel/Repositorio
-                        println("Lógica para guardar a: ${clienteGuardado.getNombre()}")
+                        if (clienteSeleccionado == null) {
+                            repo.crear(clienteGuardado)
+                        } else {
+                            repo.actualizar(clienteGuardado)
+                        }
+                        clientes = repo.listar() // refresh
                         pantallaActual = Pantalla.LISTA // Vuelve a la lista después de guardar
                     }
                 )
@@ -110,7 +143,8 @@ class PantallaClientes {
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).padding(16.dp),
+                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).fillMaxHeight()
+                    .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 OutlinedTextField(
@@ -156,7 +190,8 @@ class PantallaClientes {
         onSaveCliente: (Cliente) -> Unit
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().background(backgroundColor).verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().background(backgroundColor)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(100.dp))
@@ -177,8 +212,16 @@ class PantallaClientes {
         var rut by remember { mutableStateOf(clienteAEditar?.getRut() ?: "") }
         var nombre by remember { mutableStateOf(clienteAEditar?.getNombre() ?: "") }
         var email by remember { mutableStateOf(clienteAEditar?.getEmail() ?: "") }
-        var direccionFacturacion by remember { mutableStateOf(clienteAEditar?.getDireccionFacturacion() ?: "") }
-        var estado by remember { mutableStateOf(clienteAEditar?.getEstado() ?: EstadoCliente.INACTIVO) }
+        var direccionFacturacion by remember {
+            mutableStateOf(
+                clienteAEditar?.getDireccionFacturacion() ?: ""
+            )
+        }
+        var estado by remember {
+            mutableStateOf(
+                clienteAEditar?.getEstado() ?: EstadoCliente.INACTIVO
+            )
+        }
         var error by remember { mutableStateOf<String?>(null) }
 
         ElevatedCard(
@@ -188,7 +231,8 @@ class PantallaClientes {
             shape = RoundedCornerShape(8.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(start = 50.dp, top = 30.dp, end = 30.dp, bottom = 30.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .padding(start = 50.dp, top = 30.dp, end = 30.dp, bottom = 30.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
@@ -197,7 +241,12 @@ class PantallaClientes {
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                CampoRegistroCliente(rut, onChange = { rut = it }, label = "Rut", enabled = clienteAEditar == null)
+                CampoRegistroCliente(
+                    rut,
+                    onChange = { rut = it },
+                    label = "Rut",
+                    enabled = clienteAEditar == null
+                )
                 CampoRegistroCliente(nombre, onChange = { nombre = it }, label = "Nombre")
                 CampoRegistroCliente(email, onChange = { email = it }, label = "Email")
                 CampoRegistroCliente(
@@ -246,9 +295,17 @@ class PantallaClientes {
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = cliente.getNombre(), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = blue)
+                    Text(
+                        text = cliente.getNombre(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = blue
+                    )
                     Text("RUT: ${cliente.getRut()}", style = MaterialTheme.typography.bodyMedium)
                     Text(
                         "Estado: ${cliente.getEstado()}",
@@ -272,7 +329,11 @@ class PantallaClientes {
     }
 
     @Composable
-    private fun DeleteConfirmationDialog(cliente: Cliente, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    private fun DeleteConfirmationDialog(
+        cliente: Cliente,
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Confirmar Eliminación") },
@@ -309,7 +370,10 @@ class PantallaClientes {
     }
 
     @Composable
-    private fun SelectorEstadoCliente(selectedState: EstadoCliente, onStateSelected: (EstadoCliente) -> Unit) {
+    private fun SelectorEstadoCliente(
+        selectedState: EstadoCliente,
+        onStateSelected: (EstadoCliente) -> Unit
+    ) {
         var expanded by remember { mutableStateOf(false) }
         Text(text = "Estado:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = blue)
         Box {

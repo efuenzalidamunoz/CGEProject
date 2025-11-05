@@ -5,10 +5,10 @@ class Cliente(
     rut: String,
     nombre: String,
     email: String,
-    private val direccionFacturacion: String,
-    private val estado: EstadoCliente,
-    private val boletas: MutableList<Boleta> = mutableStateListOf(),
-    private val medidores: MutableList<Medidor> = mutableStateListOf()
+    private var direccionFacturacion: String,
+    private var estado: EstadoCliente,
+    private var boletas: MutableList<Boleta> = mutableStateListOf(),
+    private var medidores: MutableList<Medidor> = mutableStateListOf()
 ): Persona(rut, nombre, email) {
 
     fun getDireccionFacturacion(): String = direccionFacturacion
