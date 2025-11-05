@@ -20,6 +20,9 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation("com.itextpdf:kernel:7.2.1")
+            implementation("com.itextpdf:layout:7.2.1")
+
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -45,9 +45,7 @@ import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.dominio.MedidorMonofasico
 import org.example.cgeproject.dominio.MedidorTrifasico
-import org.example.cgeproject.persistencia.FileSystemStorageDriver
-import org.example.cgeproject.persistencia.MedidorRepoImpl
-import org.example.cgeproject.persistencia.PersistenciaDatos
+import org.example.cgeproject.persistencia.MedidorRepositorio
 import java.util.Date
 import java.util.UUID
 
@@ -61,11 +59,9 @@ private enum class TipoMedidor(val str: String) {
     TRIFASICO("Trifásico")
 }
 
-class PantallaMedidores {
+class PantallaMedidores(private val repo: MedidorRepositorio) {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
-
-    private val repo = MedidorRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
     fun PantallaPrincipal() {
@@ -267,7 +263,7 @@ class PantallaMedidores {
                                         "",
                                         pot,
                                         1.0
-                                    ) // Factor default
+                                    )
                                 }
 
                                 onSave(medidor, rutCliente)

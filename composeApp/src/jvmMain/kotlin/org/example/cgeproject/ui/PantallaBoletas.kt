@@ -21,9 +21,11 @@ import org.example.cgeproject.dominio.Boleta
 import org.example.cgeproject.persistencia.BoletaRepositorio
 import org.example.cgeproject.servicios.BoletaService
 import org.example.cgeproject.servicios.PdfService
+import java.io.File
 
-// TODO(faltan agregar mas opciones a la parte de pantalla boletas o rehacerla de cero)
-class PantallaBoletas() {
+class PantallaBoletas(
+    private val boletaService: BoletaService
+) {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
@@ -204,21 +206,13 @@ class PantallaBoletas() {
 
     @Composable
     private fun MostrarTablaBoletas(idCliente: String) {
-        val boletas = remember {
-            mutableStateListOf(
-                BoletaItem("15/10/2024", "350", "$50.000"),
-                BoletaItem("15/09/2024", "420", "$65.000"),
-                BoletaItem("15/08/2024", "280", "$42.000"),
-                BoletaItem("15/07/2024", "395", "$58.500"),
-                BoletaItem("15/06/2024", "310", "$47.000"),
-                BoletaItem("15/05/2024", "445", "$70.250"),
-                BoletaItem("15/04/2024", "268", "$39.800"),
-                BoletaItem("15/03/2024", "380", "$55.200"),
-                BoletaItem("15/02/2024", "505", "$78.900"),
-                BoletaItem("15/01/2024", "425", "$66.300"),
-                BoletaItem("15/12/2023", "315", "$48.500"),
-                BoletaItem("15/11/2023", "290", "$43.700")
-            )
+        val boletas = remember { mutableStateListOf<Boleta>() }
+        val scope = rememberCoroutineScope()
+
+        LaunchedEffect(idCliente) {
+            scope.launch {
+                // Lógica para obtener las boletas del cliente
+            }
         }
 
         ElevatedCard(
@@ -292,7 +286,9 @@ class PantallaBoletas() {
     }
 
     @Composable
-    private fun FilasTabla(boleta: BoletaItem, blue: Color) {
+    private fun FilasTabla(boleta: Boleta, blue: Color) {
+        val scope = rememberCoroutineScope()
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,40 +297,52 @@ class PantallaBoletas() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = boleta.fechaEmision,
+                text = "${boleta.getAnio()}/${boleta.getMes()}",
                 fontSize = 14.sp,
                 color = Color.DarkGray,
                 modifier = Modifier.weight(1.5f)
             )
             Text(
-                text = boleta.consumoKwh,
+                text = boleta.getKwhTotal().toString(),
                 fontSize = 14.sp,
                 color = Color.DarkGray,
                 modifier = Modifier.weight(1.5f)
             )
             Text(
-                text = boleta.totalPagar,
+                text = "$${boleta.getDetalle().total}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = blue,
                 modifier = Modifier.weight(1.5f)
             )
-            Button(
-                onClick = { /* Acción al presionar opciones */ },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = blue
-                )
-            ) {
-                Text("Ver detalle")
+            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { /* Acción al presionar opciones */ },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = blue
+                    )
+                ) {
+                    Text("Ver detalle")
+                }
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val pdfBytes = boletaService.exportarPdfClienteMes(boleta.getIdCliente(), boleta.getMes(), boleta.getAnio())
+                                val file = File("data/boleta_${boleta.getIdCliente()}_${boleta.getAnio()}_${boleta.getMes()}.pdf")
+                                file.writeBytes(pdfBytes)
+                            } catch (e: Exception) {
+                                // Manejar error
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = blue
+                    )
+                ) {
+                    Text("Descargar PDF")
+                }
             }
         }
     }
-
-    // Para probar nomas
-    data class BoletaItem(
-        val fechaEmision: String,
-        val consumoKwh: String,
-        val totalPagar: String
-    )
 }

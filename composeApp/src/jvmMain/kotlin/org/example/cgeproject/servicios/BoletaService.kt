@@ -13,18 +13,51 @@ class BoletaService(
     private val medidores: MedidorRepositorio,
     private val lecturas: LecturaRepositorio,
     private val boletas: BoletaRepositorio,
-    private val tarifas: TarifaService
+    private val tarifas: TarifaService,
+    private val pdf: PdfService
 ) {
 
     fun emitirBoletaMensual(rutCliente: String, mes: Int, anio: Int): Boleta {
-        TODO("Not yet implemented")
+        val cliente = clientes.obtenerPorRut(rutCliente) ?: throw Exception("Cliente no encontrado")
+        val consumoKwh = calcularKwhClienteMes(rutCliente, mes, anio)
+        val tarifa = tarifas.tarifaPara(cliente)
+        val detalleTarifa = tarifa.calcular(consumoKwh)
+
+        val boleta = Boleta(
+            id = "B-" + System.currentTimeMillis(),
+            createdAt = Date(),
+            updatedAt = Date(),
+            idCliente = cliente.getRut(),
+            anio = anio,
+            mes = mes,
+            kwhTotal = consumoKwh,
+            detalle = detalleTarifa,
+            estado = EstadoBoleta.PENDIENTE
+        )
+
+        return boletas.guardar(boleta)
     }
 
     fun calcularKwhClienteMes(rutCliente: String, mes: Int, anio: Int): Double {
-        TODO("Not yet implemented")
+        val cliente = clientes.obtenerPorRut(rutCliente) ?: throw Exception("Cliente no encontrado")
+        val medidoresCliente = medidores.listarPorCliente(cliente.getRut())
+        var consumoTotal = 0.0
+
+        for (medidor in medidoresCliente) {
+            val lecturasMes = lecturas.listarPorMedidorMes(medidor.getCodigo(), anio, mes)
+            if (lecturasMes.isNotEmpty()) {
+                val primeraLectura = lecturasMes.first().getKwhLeidos()
+                val ultimaLectura = lecturasMes.last().getKwhLeidos()
+                consumoTotal += ultimaLectura - primeraLectura
+            }
+        }
+
+        return consumoTotal
     }
 
     fun exportarPdfClienteMes(rutCliente: String, mes: Int, anio: Int): ByteArray {
-        TODO("Not yet implemented")
+        val boleta = boletas.obtener(rutCliente, anio, mes) ?: throw Exception("Boleta no encontrada")
+        val cliente = clientes.obtenerPorRut(rutCliente) ?: throw Exception("Cliente no encontrado")
+        return pdf.generarPdf(listOf(boleta), mapOf(rutCliente to cliente))
     }
 }
