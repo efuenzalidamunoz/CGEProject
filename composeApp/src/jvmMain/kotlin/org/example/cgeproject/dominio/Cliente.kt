@@ -15,6 +15,10 @@ class Cliente(
     fun getEstado(): EstadoCliente = estado
 
     fun agregarBoleta(boleta: Boleta) {
-        TODO("Not yet implemented")
+        boletas.add(boleta)
+    }
+
+    fun agregarMedidor(medidor: Medidor) {
+        medidores.add(medidor)
     }
 }

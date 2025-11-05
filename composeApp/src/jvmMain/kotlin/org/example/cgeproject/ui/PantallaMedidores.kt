@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +50,7 @@ class PantallaMedidores {
                     onNavigateToForm = { pantallaActual = PantallaMedidor.FORMULARIO }
                 )
             }
+
             PantallaMedidor.FORMULARIO -> {
                 FormularioMedidorContent(
                     onNavigateBack = { pantallaActual = PantallaMedidor.LISTA },
@@ -100,7 +100,10 @@ class PantallaMedidores {
                         // TODO: Implementar lógica de 'listarPorCliente' y 'obtenerPorCodigo'
                         medidoresFiltrados = if (searchQuery.isNotBlank()) {
                             medidoresDeEjemplo.filter { medidor ->
-                                medidor.rutCliente.contains(searchQuery, true) || medidor.codigo.contains(searchQuery, true)
+                                medidor.rutCliente.contains(searchQuery, true) || medidor.codigo.contains(
+                                    searchQuery,
+                                    true
+                                )
                             }
                         } else {
                             emptyList()
@@ -151,17 +154,41 @@ class PantallaMedidores {
         var rutCliente by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
 
-        Column(modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             ElevatedCard(modifier = Modifier.fillMaxWidth(0.7f).padding(top = 50.dp)) {
                 Column(modifier = Modifier.padding(32.dp)) {
                     Text("Registrar Nuevo Medidor", style = MaterialTheme.typography.headlineMedium, color = blue)
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    OutlinedTextField(value = codigo, onValueChange = { codigo = it }, label = { Text("Código del Medidor") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = tipo, onValueChange = { tipo = it }, label = { Text("Tipo de Medidor (Ej: Monofásico)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = rutCliente, onValueChange = { rutCliente = it }, label = { Text("RUT del Cliente Asociado") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = codigo,
+                        onValueChange = { codigo = it },
+                        label = { Text("Código del Medidor") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = tipo,
+                        onValueChange = { tipo = it },
+                        label = { Text("Tipo de Medidor (Ej: Monofásico)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rutCliente,
+                        onValueChange = { rutCliente = it },
+                        label = { Text("RUT del Cliente Asociado") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+                    error?.let {
+                        Text(
+                            it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
                     Row {
@@ -234,7 +261,10 @@ class PantallaMedidores {
             title = { Text("Confirmar Eliminación") },
             text = { Text("¿Seguro que deseas eliminar el medidor con código '${medidor.codigo}'?") },
             confirmButton = {
-                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
                     Text("Eliminar")
                 }
             },
