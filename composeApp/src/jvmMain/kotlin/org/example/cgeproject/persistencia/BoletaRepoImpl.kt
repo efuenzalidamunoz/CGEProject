@@ -3,12 +3,11 @@ package org.example.cgeproject.persistencia
 import org.example.cgeproject.dominio.Boleta
 
 class BoletaRepoImpl: BoletaRepositorio {
-    // Usa la base de datos central en memoria
-    override suspend fun guardar(b: Boleta): Boleta {
+    override fun guardar(b: Boleta): Boleta {
         TODO("Not yet implemented")
     }
 
-    override suspend fun obtener(
+    override fun obtener(
         rut: String,
         anio: Int,
         mes: Int
@@ -16,7 +15,7 @@ class BoletaRepoImpl: BoletaRepositorio {
         TODO("Not yet implemented")
     }
 
-    override suspend fun listarPorCliente(rut: String): List<Boleta> {
+    override fun listarPorCliente(rut: String): List<Boleta> {
         TODO("Not yet implemented")
     }
 

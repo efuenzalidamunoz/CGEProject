@@ -3,12 +3,11 @@ package org.example.cgeproject.persistencia
 import org.example.cgeproject.dominio.LecturaConsumo
 
 class LecturaRepoImpl: LecturaRepositorio {
-    // Usa la base de datos central en memoria
-    override suspend fun registrar(l: LecturaConsumo): LecturaConsumo {
+    override fun registrar(l: LecturaConsumo): LecturaConsumo {
         TODO("Not yet implemented")
     }
 
-    override suspend fun listarPorMedidorMes(
+    override fun listarPorMedidorMes(
         idMedidor: String,
         anio: Int,
         mes: Int
@@ -16,7 +15,7 @@ class LecturaRepoImpl: LecturaRepositorio {
         TODO("Not yet implemented")
     }
 
-    override suspend fun ultimaLectura(idMedidor: String): LecturaConsumo? {
+    override fun ultimaLectura(idMedidor: String): LecturaConsumo? {
         TODO("Not yet implemented")
     }
 
