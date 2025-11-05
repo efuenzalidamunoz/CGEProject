@@ -1,12 +1,12 @@
 package org.example.cgeproject.servicios
 
-import kotlinx.datetime.Clock
 import org.example.cgeproject.dominio.Boleta
 import org.example.cgeproject.dominio.EstadoBoleta
 import org.example.cgeproject.persistencia.BoletaRepositorio
 import org.example.cgeproject.persistencia.ClienteRepositorio
 import org.example.cgeproject.persistencia.LecturaRepositorio
 import org.example.cgeproject.persistencia.MedidorRepositorio
+import java.util.Date
 
 class BoletaService(
     private val clientes: ClienteRepositorio,
@@ -26,8 +26,8 @@ class BoletaService(
 
         val nuevaBoleta = Boleta(
             id = "bol-${rutCliente}-${anio}-${mes}",
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now(),
+            createdAt = Date(),
+            updatedAt = Date(),
             idCliente = rutCliente,
             anio = anio,
             mes = mes,

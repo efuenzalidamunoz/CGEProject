@@ -12,7 +12,7 @@ open class Medidor constructor(
     private val idCliente: String
 ): EntidadBase(id, createdAt, updatedAt) {
     open fun tipo(): String {
-        return "Genérico"
+        return "Medidor Genérico"
     }
 
     fun getCodigo(): String = codigo

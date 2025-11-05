@@ -1,11 +1,11 @@
 package org.example.cgeproject.dominio
 
-import kotlinx.datetime.Instant // Tipo corregido
+import java.util.Date
 
 class MedidorTrifasico constructor(
     id: String,
-    createdAt: Instant,
-    updatedAt: Instant,
+    createdAt: Date,
+    updatedAt: Date,
     codigo: String,
     direccionSuministro: String,
     activo: Boolean,
