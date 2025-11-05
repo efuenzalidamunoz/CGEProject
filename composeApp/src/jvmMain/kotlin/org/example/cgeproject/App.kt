@@ -20,15 +20,15 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun App() {
-    var currentScreen by remember { mutableStateOf(AppScreen.CLIENTES) }
+    var pantalla by remember { mutableStateOf(AppScreen.CLIENTES) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopNavBar(
-            currentScreen = currentScreen,
-            onScreenSelected = { screen -> currentScreen = screen }
+            currentScreen = pantalla,
+            onScreenSelected = { screen -> pantalla = screen }
         )
         Box(modifier = Modifier.fillMaxSize()) {
-            when (currentScreen) {
+            when (pantalla) {
                 AppScreen.CLIENTES -> PantallaClientes().PantallaPrincipal()
                 AppScreen.MEDIDORES -> PantallaMedidores().PantallaPrincipal()
                 AppScreen.LECTURAS -> PantallaLecturas().PantallaPrincipal()
