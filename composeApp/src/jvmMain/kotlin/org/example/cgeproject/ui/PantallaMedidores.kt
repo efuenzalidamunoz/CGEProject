@@ -416,4 +416,3 @@ class PantallaMedidores {
         )
     }
 }
-

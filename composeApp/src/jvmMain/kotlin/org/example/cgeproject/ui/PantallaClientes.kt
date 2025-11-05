@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,7 +49,8 @@ import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Cliente
 import org.example.cgeproject.dominio.EstadoCliente
 import org.example.cgeproject.persistencia.ClienteRepoImpl
-import org.example.cgeproject.persistencia.ClienteRepositorio
+import org.example.cgeproject.persistencia.FileSystemStorageDriver
+import org.example.cgeproject.persistencia.PersistenciaDatos
 
 // Enum para controlar qué pantalla se muestra
 private enum class Pantalla {
@@ -58,9 +58,12 @@ private enum class Pantalla {
     FORMULARIO
 }
 
-class PantallaClientes(private val repo: ClienteRepositorio) {
+class PantallaClientes {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
+
+    // --- Repositorio ---
+    private val repo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
     fun PantallaPrincipal() {
@@ -140,17 +143,14 @@ class PantallaClientes(private val repo: ClienteRepositorio) {
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-                    .padding(paddingValues)
+                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).fillMaxHeight()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(0.7f),
+                    modifier = Modifier.fillMaxWidth(),
                     label = { Text("Buscar por Nombre o RUT") },
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue),
@@ -159,11 +159,7 @@ class PantallaClientes(private val repo: ClienteRepositorio) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.7f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(clientesFiltrados) { cliente ->
                         ClienteItem(
                             cliente = cliente,
@@ -275,11 +271,6 @@ class PantallaClientes(private val repo: ClienteRepositorio) {
                         onClick = {
                             if (rut.isBlank() || nombre.isBlank() || email.isBlank() || direccionFacturacion.isBlank()) {
                                 error = "Todos los campos son obligatorios"
-                                return@Button
-                            }
-                            val esCreacion = clienteAEditar == null
-                            if (esCreacion && repo.listar().any { it.getRut() == rut }) {
-                                error = "Ya existe un cliente con ese RUT"
                                 return@Button
                             }
                             onSave(Cliente(rut, nombre, email, direccionFacturacion, estado))
