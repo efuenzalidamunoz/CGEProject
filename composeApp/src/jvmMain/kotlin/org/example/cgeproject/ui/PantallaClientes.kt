@@ -281,6 +281,11 @@ class PantallaClientes {
                                 error = "Todos los campos son obligatorios"
                                 return@Button
                             }
+                            val esCreacion = clienteAEditar == null
+                            if (esCreacion && repo.listar().any { it.getRut() == rut }) {
+                                error = "Ya existe un cliente con ese RUT"
+                                return@Button
+                            }
                             onSave(Cliente(rut, nombre, email, direccionFacturacion, estado))
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = blue)

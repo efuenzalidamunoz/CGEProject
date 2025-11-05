@@ -22,7 +22,7 @@ import org.example.cgeproject.persistencia.BoletaRepositorio
 import org.example.cgeproject.servicios.BoletaService
 import org.example.cgeproject.servicios.PdfService
 
-
+// TODO(faltan agregar mas opciones a la parte de pantalla boletas o rehacerla de cero)
 class PantallaBoletas() {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)

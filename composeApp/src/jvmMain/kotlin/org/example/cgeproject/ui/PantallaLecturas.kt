@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,8 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -87,11 +92,12 @@ class PantallaLecturas {
     @Composable
     private fun GestionLecturasContent(onNavigateToForm: () -> Unit) {
         var idMedidor by remember { mutableStateOf("") }
-        var anio by remember { mutableStateOf(Date().toInstant().atZone(java.time.ZoneId.systemDefault()).year.toString()) }
-        var mes by remember { mutableStateOf((Date().toInstant().atZone(java.time.ZoneId.systemDefault()).monthValue).toString()) }
+        var anio by remember { mutableStateOf("") }
+        var mes by remember { mutableStateOf("") }
 
         var ultimaLectura by remember { mutableStateOf<LecturaConsumo?>(null) }
         var lecturasDelMes by remember { mutableStateOf<List<LecturaConsumo>>(emptyList()) }
+        var error by remember { mutableStateOf<String?>(null) }
 
         Scaffold(
             topBar = {
@@ -111,7 +117,8 @@ class PantallaLecturas {
                     .fillMaxSize()
                     .background(backgroundColor)
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Formulario de Búsqueda
@@ -125,8 +132,18 @@ class PantallaLecturas {
                         if (idMedidor.isNotBlank() && anioInt != null && mesInt != null) {
                             lecturasDelMes = repo.listarPorMedidorMes(idMedidor, anioInt, mesInt)
                             ultimaLectura = repo.ultimaLectura(idMedidor)
+
+                            if (lecturasDelMes.isEmpty() && ultimaLectura == null) {
+                                error = "No existe un medidor con ese ID"
+                            } else {
+                                error = null
+                            }
+
+                        } else {
+                            error = "Complete todos los campos correctamente."
                         }
-                    }
+                    },
+                    searchError = error
                 )
 
                 // Mostrar Última Lectura
@@ -144,7 +161,10 @@ class PantallaLecturas {
     }
 
     @Composable
-    private fun FormularioLecturaContent(onNavigateBack: () -> Unit, onSave: (LecturaConsumo) -> Unit) {
+    private fun FormularioLecturaContent(
+        onNavigateBack: () -> Unit,
+        onSave: (LecturaConsumo) -> Unit
+    ) {
         var idMedidor by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf(Date().toInstant().atZone(java.time.ZoneId.systemDefault()).year.toString()) }
         var mes by remember { mutableStateOf((Date().toInstant().atZone(java.time.ZoneId.systemDefault()).monthValue).toString()) }
@@ -152,10 +172,25 @@ class PantallaLecturas {
         var error by remember { mutableStateOf<String?>(null) }
 
         Column(
-            modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ElevatedCard(modifier = Modifier.fillMaxWidth(0.7f).padding(top = 50.dp)) {
+            ElevatedCard(
+                elevation = CardDefaults.elevatedCardElevation(
+                    defaultElevation = 8.dp
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                modifier = Modifier
+                    .padding(top = 50.dp)
+                    .fillMaxWidth(0.7f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
                 Column(modifier = Modifier.padding(32.dp)) {
                     Text("Registrar Nueva Lectura", style = MaterialTheme.typography.headlineMedium, color = blue)
                     Spacer(modifier = Modifier.height(24.dp))
@@ -235,10 +270,27 @@ class PantallaLecturas {
         idMedidor: String, onIdMedidorChange: (String) -> Unit,
         anio: String, onAnioChange: (String) -> Unit,
         mes: String, onMesChange: (String) -> Unit,
-        onSearch: () -> Unit
+        onSearch: () -> Unit,
+        searchError: String?
     ) {
-        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
+
+
+        ElevatedCard(
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = 8.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(0.7f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+            ) {
                 Text("Buscar Lecturas", style = MaterialTheme.typography.titleLarge, color = blue)
                 OutlinedTextField(
                     value = idMedidor,
@@ -261,6 +313,9 @@ class PantallaLecturas {
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+                searchError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp))
+                }
                 Button(onClick = onSearch, enabled = idMedidor.isNotBlank(), modifier = Modifier.align(Alignment.End)) {
                     Text("Buscar")
                 }
