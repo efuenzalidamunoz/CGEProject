@@ -4,5 +4,6 @@ enum class EstadoBoleta {
     EMITIDA,
     ENVIADA,
     PAGADA,
-    ANULADA
+    ANULADA,
+    PENDIENTE,
 }

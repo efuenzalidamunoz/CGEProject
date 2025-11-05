@@ -14,11 +14,7 @@ class Cliente(
     fun getDireccionFacturacion(): String = direccionFacturacion
     fun getEstado(): EstadoCliente = estado
 
-    fun agregarBoleta(boleta: Boleta) {
-        boletas.add(boleta)
-    }
+    fun agregarBoleta(boleta: Boleta) { boletas.add(boleta) }
+    fun agregarMedidor(medidor: Medidor) { medidores.add(medidor) }
 
-    fun agregarMedidor(medidor: Medidor) {
-        medidores.add(medidor)
-    }
 }

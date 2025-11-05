@@ -2,7 +2,7 @@ package org.example.cgeproject.dominio
 
 import java.util.Date
 
-open class Medidor constructor(
+open class Medidor(
     id: String,
     createdAt: Date,
     updatedAt: Date,
@@ -11,10 +11,17 @@ open class Medidor constructor(
     private val activo: Boolean,
     private val idCliente: String
 ): EntidadBase(id, createdAt, updatedAt) {
+
+
+    fun getCodigo(): String = codigo
+    fun getDireccionSuministro(): String = direccionSuministro
+    fun getActivo(): Boolean = activo
+    fun getIdCliente(): String = idCliente
+
+
     open fun tipo(): String {
         return "Medidor Genérico"
     }
 
-    fun getCodigo(): String = codigo
-    fun getIdCliente(): String = idCliente
+
 }

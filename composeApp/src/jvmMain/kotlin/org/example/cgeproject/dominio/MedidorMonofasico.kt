@@ -2,7 +2,7 @@ package org.example.cgeproject.dominio
 
 import java.util.Date
 
-class MedidorMonofasico constructor(
+class MedidorMonofasico(
     id: String,
     createdAt: Date,
     updatedAt: Date,
@@ -13,9 +13,11 @@ class MedidorMonofasico constructor(
     private val potenciaMaxKw: Double
 ): Medidor(id, createdAt, updatedAt, codigo, direccionSuministro, activo, idCliente) {
 
+    fun getPotenciaMaxKw() : Double = potenciaMaxKw
+
     override fun tipo(): String {
         return "Monofásico"
     }
 
-    fun getPotenciaMaxKw() : Double = potenciaMaxKw
+
 }

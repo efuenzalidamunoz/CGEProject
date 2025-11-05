@@ -6,7 +6,11 @@ import java.util.Date
  * Clase base para todas las entidades del dominio.
  */
 open class EntidadBase(
-    val id: String,
-    val createdAt: Date, // Tipo corregido
-    val updatedAt: Date  // Tipo corregido
-)
+    private val id: String,
+    private val createdAt: Date, // Tipo corregido
+    private val updatedAt: Date  // Tipo corregido
+) {
+    fun getId(): String = id
+    fun getCreatedAt(): Date = createdAt
+    fun getUpdatedAt(): Date = updatedAt
+}

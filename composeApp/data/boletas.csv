@@ -1,0 +1,2 @@
+id,createdAt,updatedAt,idCliente,anio,mes,kwhTotal,detalle_subtotal,detalle_cargos,detalle_iva,detalle_total,estado
+BOL-001,1762366532548,1762366532548,12345678-9,2024,10,250.5,30060.0,3500.0,6376.4,39936.4,PENDIENTE

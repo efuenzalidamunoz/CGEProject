@@ -5,6 +5,6 @@ class TarifaDetalle(
     val subtotal: Double,
     val cargos: Double,
     val iva: Double,
-    val total: Double
+    var total: Double
 ) {
 }

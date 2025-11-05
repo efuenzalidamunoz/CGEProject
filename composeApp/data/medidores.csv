@@ -1,0 +1,3 @@
+id,createdAt,updatedAt,codigo,direccionSuministro,activo,idCliente,tipo,potenciaMaxKw,factorPotencia
+MED-001,1762366532548,1762366532548,COD-MED-001,Av. Siempre Viva 742,true,12345678-9,Monofásico,5.0,
+MED-002,1762366532548,1762366532548,COD-MED-002,Av. Siempre Viva 742,true,12345678-9,Trifásico,15.0,0.95
