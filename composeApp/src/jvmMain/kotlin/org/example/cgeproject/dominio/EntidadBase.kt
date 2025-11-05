@@ -2,9 +2,7 @@ package org.example.cgeproject.dominio
 
 import java.util.Date
 
-/**
- * Clase base para todas las entidades del dominio.
- */
+
 open class EntidadBase(
     private val id: String,
     private val createdAt: Date, // Tipo corregido

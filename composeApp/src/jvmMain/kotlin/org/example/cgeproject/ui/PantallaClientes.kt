@@ -50,8 +50,7 @@ import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Cliente
 import org.example.cgeproject.dominio.EstadoCliente
 import org.example.cgeproject.persistencia.ClienteRepoImpl
-import org.example.cgeproject.persistencia.FileSystemStorageDriver
-import org.example.cgeproject.persistencia.PersistenciaDatos
+import org.example.cgeproject.persistencia.ClienteRepositorio
 
 // Enum para controlar qué pantalla se muestra
 private enum class Pantalla {
@@ -59,12 +58,9 @@ private enum class Pantalla {
     FORMULARIO
 }
 
-class PantallaClientes {
+class PantallaClientes(private val repo: ClienteRepositorio) {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
-
-    // --- Repositorio ---
-    private val repo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
     fun PantallaPrincipal() {

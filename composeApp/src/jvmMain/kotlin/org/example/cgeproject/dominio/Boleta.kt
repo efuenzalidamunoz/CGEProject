@@ -23,7 +23,15 @@ class Boleta(
     fun getEstado() : EstadoBoleta = estado
 
     override fun toPdfTable(): PdfTable {
-        TODO("Not yet implemented")
+        val headers = listOf("Descripción", "Monto")
+        val rows = listOf(
+            listOf("Consumo (kWh)", kwhTotal.toString()),
+            listOf("Subtotal", "$${detalle.subtotal}"),
+            listOf("Cargos Adicionales", "$${detalle.cargos}"),
+            listOf("IVA (19%)", "$${detalle.iva}"),
+            listOf("Total a Pagar", "$${detalle.total}")
+        )
+        return PdfTable(headers, rows)
     }
 
 
