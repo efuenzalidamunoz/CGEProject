@@ -35,15 +35,6 @@ import java.util.Date
 @Composable
 @Preview
 fun App() {
-    val storageDriver = FileSystemStorageDriver()
-    val persist = PersistenciaDatos(storageDriver)
-
-    val clienteRepo = ClienteRepoImpl(persist)
-    val medidorRepo = MedidorRepoImpl(persist)
-    val lecturaRepo = LecturaRepoImpl(persist)
-    val boletaRepo = BoletaRepoImpl(persist)
-
-
     var pantalla by remember { mutableStateOf(AppScreen.CLIENTES) }
 
     Column(modifier = Modifier.fillMaxSize()) {

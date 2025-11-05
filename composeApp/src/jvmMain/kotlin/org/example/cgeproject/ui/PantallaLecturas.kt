@@ -1,11 +1,36 @@
 package org.example.cgeproject.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,16 +38,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import org.example.cgeproject.dominio.LecturaConsumo
+import org.example.cgeproject.persistencia.FileSystemStorageDriver
+import org.example.cgeproject.persistencia.LecturaRepoImpl
+import org.example.cgeproject.persistencia.PersistenciaDatos
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.UUID
 
-// --- Modelo de Dominio (Asumido) con fecha como String ---
-// TODO: Reemplazar con tu clase de dominio real.
-data class LecturaConsumo(
-    val idMedidor: String,
-    val fecha: String, // Cambiado a String
-    val consumoKwh: Int
-)
 
 // --- Enum para Navegación ---
 private enum class PantallaLectura {
@@ -34,14 +57,8 @@ class PantallaLecturas {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
-    // --- Datos de Ejemplo con fecha como String ---
-    // TODO: Reemplazar con las llamadas a tu repositorio.
-    private val lecturasDeEjemplo = listOf(
-        LecturaConsumo("MED-001", "2024-10-05", 150),
-        LecturaConsumo("MED-001", "2024-10-12", 155),
-        LecturaConsumo("MED-001", "2024-09-28", 140),
-        LecturaConsumo("MED-002", "2024-10-08", 320)
-    )
+    // --- Repositorio ---
+    private val repo = LecturaRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
     fun PantallaPrincipal() {
@@ -58,8 +75,7 @@ class PantallaLecturas {
                 FormularioLecturaContent(
                     onNavigateBack = { pantallaActual = PantallaLectura.LISTA },
                     onSave = { nuevaLectura ->
-                        // TODO: Implementar lógica de 'registrar(l: LecturaConsumo)'
-                        println("Guardando nueva lectura: $nuevaLectura")
+                        repo.registrar(nuevaLectura)
                         pantallaActual = PantallaLectura.LISTA
                     }
                 )
@@ -71,8 +87,8 @@ class PantallaLecturas {
     @Composable
     private fun GestionLecturasContent(onNavigateToForm: () -> Unit) {
         var idMedidor by remember { mutableStateOf("") }
-        var anio by remember { mutableStateOf("2024") }
-        var mes by remember { mutableStateOf("10") }
+        var anio by remember { mutableStateOf(Date().toInstant().atZone(java.time.ZoneId.systemDefault()).year.toString()) }
+        var mes by remember { mutableStateOf((Date().toInstant().atZone(java.time.ZoneId.systemDefault()).monthValue).toString()) }
 
         var ultimaLectura by remember { mutableStateOf<LecturaConsumo?>(null) }
         var lecturasDelMes by remember { mutableStateOf<List<LecturaConsumo>>(emptyList()) }
@@ -104,18 +120,11 @@ class PantallaLecturas {
                     anio = anio, onAnioChange = { anio = it },
                     mes = mes, onMesChange = { mes = it },
                     onSearch = {
-                        // TODO: Implementar lógica de 'listarPorMedidorMes' y 'ultimaLectura'
                         val anioInt = anio.toIntOrNull()
                         val mesInt = mes.toIntOrNull()
                         if (idMedidor.isNotBlank() && anioInt != null && mesInt != null) {
-                            val mesStr = mesInt.toString().padStart(2, '0')
-                            lecturasDelMes = lecturasDeEjemplo.filter {
-                                it.idMedidor == idMedidor && it.fecha.startsWith("$anioInt-$mesStr")
-                            }
-                            // maxByOrNull sigue funcionando con el formato "YYYY-MM-DD"
-                            ultimaLectura = lecturasDeEjemplo
-                                .filter { it.idMedidor == idMedidor }
-                                .maxByOrNull { it.fecha }
+                            lecturasDelMes = repo.listarPorMedidorMes(idMedidor, anioInt, mesInt)
+                            ultimaLectura = repo.ultimaLectura(idMedidor)
                         }
                     }
                 )
@@ -137,8 +146,8 @@ class PantallaLecturas {
     @Composable
     private fun FormularioLecturaContent(onNavigateBack: () -> Unit, onSave: (LecturaConsumo) -> Unit) {
         var idMedidor by remember { mutableStateOf("") }
-        // La fecha se obtiene como String directamente
-        var fecha by remember { mutableStateOf(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)) }
+        var anio by remember { mutableStateOf(Date().toInstant().atZone(java.time.ZoneId.systemDefault()).year.toString()) }
+        var mes by remember { mutableStateOf((Date().toInstant().atZone(java.time.ZoneId.systemDefault()).monthValue).toString()) }
         var consumo by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
 
@@ -157,12 +166,20 @@ class PantallaLecturas {
                         label = { Text("ID Medidor") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
-                        value = fecha,
-                        onValueChange = { fecha = it },
-                        label = { Text("Fecha (YYYY-MM-DD)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = anio,
+                            onValueChange = { anio = it },
+                            label = { Text("Año") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = mes,
+                            onValueChange = { mes = it },
+                            label = { Text("Mes") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     OutlinedTextField(
                         value = consumo,
                         onValueChange = { consumo = it },
@@ -182,13 +199,26 @@ class PantallaLecturas {
                     Row {
                         Button(
                             onClick = {
-                                val consumoInt = consumo.toIntOrNull()
-                                // Validación simple de String
-                                if (idMedidor.isBlank() || fecha.isBlank() || consumoInt == null) {
+                                val anioInt = anio.toIntOrNull()
+                                val mesInt = mes.toIntOrNull()
+                                val consumoDouble = consumo.toDoubleOrNull()
+
+                                if (idMedidor.isBlank() || anioInt == null || mesInt == null || consumoDouble == null) {
                                     error = "Datos inválidos. Revise los campos."
                                     return@Button
                                 }
-                                onSave(LecturaConsumo(idMedidor, fecha, consumoInt))
+                                val now = Date()
+                                onSave(
+                                    LecturaConsumo(
+                                        id = UUID.randomUUID().toString(),
+                                        createdAt = now,
+                                        updatedAt = now,
+                                        idMedidor = idMedidor,
+                                        anio = anioInt,
+                                        mes = mesInt,
+                                        kwhLeidos = consumoDouble
+                                    )
+                                )
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = blue)
                         ) { Text("Guardar Lectura") }
@@ -238,14 +268,9 @@ class PantallaLecturas {
         }
     }
 
-    // Función de ayuda para formatear el string de fecha
-    private fun formatDisplayDate(dateStr: String): String {
-        return try {
-            val parts = dateStr.split("-")
-            if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else dateStr
-        } catch (e: Exception) {
-            dateStr // Devuelve el original si el formato es inesperado
-        }
+    private fun formatDisplayDate(date: Date): String {
+        val formatter = SimpleDateFormat("dd/MM/yyyy")
+        return formatter.format(date)
     }
 
     @Composable
@@ -254,9 +279,9 @@ class PantallaLecturas {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Última Lectura Registrada", style = MaterialTheme.typography.titleLarge, color = blue)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Fecha: ${formatDisplayDate(lectura.fecha)}", style = MaterialTheme.typography.bodyLarge)
+                Text("Fecha: ${formatDisplayDate(lectura.getCreatedAt())}", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "Consumo: ${lectura.consumoKwh} kWh",
+                    "Consumo: ${lectura.getKwhLeidos()} kWh",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -281,10 +306,10 @@ class PantallaLecturas {
             HorizontalDivider()
             // Filas de la tabla
             LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                items(lecturas) { lectura ->
+                items(lecturas.sortedByDescending { it.getCreatedAt() }) { lectura ->
                     Row(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-                        Text(formatDisplayDate(lectura.fecha), modifier = Modifier.weight(1f))
-                        Text(lectura.consumoKwh.toString(), modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                        Text(formatDisplayDate(lectura.getCreatedAt()), modifier = Modifier.weight(1f))
+                        Text(lectura.getKwhLeidos().toString(), modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                     }
                     HorizontalDivider(thickness = 0.5.dp)
                 }
