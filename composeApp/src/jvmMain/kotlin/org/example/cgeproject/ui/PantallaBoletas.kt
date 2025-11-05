@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,174 +17,324 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.example.cgeproject.dominio.Boleta
 import org.example.cgeproject.persistencia.BoletaRepositorio
 import org.example.cgeproject.servicios.BoletaService
 import org.example.cgeproject.servicios.PdfService
-import org.example.cgeproject.utils.saveFile
 
-class PantallaBoletas(private val boletaService: BoletaService, private val boletaRepositorio: BoletaRepositorio, private val pdfService: PdfService) {
+
+class PantallaBoletas() {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
     @Composable
     fun PantallaPrincipal() {
-        var rutCliente by remember { mutableStateOf("") }
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        var anio by remember { mutableStateOf(now.year.toString()) }
-        var mes by remember { mutableStateOf(now.monthNumber.toString()) }
+        var idCliente by remember { mutableStateOf("") }
+        var mostrarLista by remember { mutableStateOf(false) }
 
-        var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
-        var boletaSeleccionada by remember { mutableStateOf<Boleta?>(null) }
-        var mensaje by remember { mutableStateOf<String?>(null) }
-        val scope = rememberCoroutineScope()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            HeaderSection()
 
-        Column(modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Generación y Consulta de Boletas", style = MaterialTheme.typography.headlineLarge, color = blue, modifier = Modifier.padding(vertical = 24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            ActionCard(
-                rutCliente = rutCliente, onRutChange = { rutCliente = it },
-                anio = anio, onAnioChange = { anio = it },
-                mes = mes, onMesChange = { mes = it },
-                onGenerate = {
-                    scope.launch {
-                        try {
-                            boletaService.generarBoleta(rutCliente, anio.toInt(), mes.toInt())
-                            mensaje = "Boleta para $rutCliente ($mes/$anio) generada con éxito."
-                            boletas = boletaRepositorio.listarPorCliente(rutCliente)
-                        } catch (e: Exception) { mensaje = "Error al generar boleta: ${e.message}" }
-                    }
-                },
-                onSearch = {
-                    scope.launch {
-                        try {
-                            boletas = boletaRepositorio.listarPorCliente(rutCliente)
-                            mensaje = if (boletas.isEmpty()) "No se encontraron boletas para el cliente $rutCliente." else null
-                        } catch (e: Exception) { mensaje = "Error al buscar boletas: ${e.message}" }
-                    }
-                }
+            bodyBoletas(
+                idCliente = idCliente,
+                onIdClienteChange = { idCliente = it },
+                mostrarLista = mostrarLista,
+                onToggleLista = { mostrarLista = !mostrarLista }
             )
 
-            mensaje?.let { Text(it, color = if (it.startsWith("Error")) MaterialTheme.colorScheme.error else blue, modifier = Modifier.padding(16.dp)) }
-
-            if (boletas.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                BoletasTable(boletas) { boleta -> boletaSeleccionada = boleta }
+            if (mostrarLista && idCliente.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                MostrarTablaBoletas(idCliente)
             }
+        }
+    }
 
-            boletaSeleccionada?.let {
-                DetalleBoletaDialog(
-                    boleta = it,
-                    onDismiss = { boletaSeleccionada = null },
-                    onDownloadPdf = {
-                        scope.launch {
-                            try {
-                                val pdfBytes = pdfService.generarPdf(it)
-                                val fileName = "boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf"
-                                saveFile(fileName, pdfBytes)
-                                mensaje = "PDF guardado como $fileName en tu directorio de usuario."
-                            } catch (e: Exception) { mensaje = "Error al generar PDF: ${e.message}" }
-                        }
-                    }
+    @Composable
+    private fun HeaderSection() {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(400.dp)
+                .background(blue)
+        ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .padding(100.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Detalle de boleta",
+                    fontSize = 40.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "Si tienes una consulta con el detalle de la boleta, aquí lo podrás encontrar.",
+                    fontSize = 14.sp,
+                    color = Color.White
                 )
             }
         }
     }
 
     @Composable
-    private fun ActionCard(
-        rutCliente: String, onRutChange: (String) -> Unit,
-        anio: String, onAnioChange: (String) -> Unit,
-        mes: String, onMesChange: (String) -> Unit,
-        onGenerate: () -> Unit,
-        onSearch: () -> Unit
+    private fun bodyBoletas(
+        idCliente: String,
+        onIdClienteChange: (String) -> Unit,
+        mostrarLista: Boolean,
+        onToggleLista: () -> Unit
     ) {
-        ElevatedCard(modifier = Modifier.fillMaxWidth(0.8f), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Consultar Historial o Generar Nueva Boleta", style = MaterialTheme.typography.titleLarge, color = blue)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(value = rutCliente, onValueChange = onRutChange, label = { Text("RUT del Cliente") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("Generar Boleta para un Periodo", style = MaterialTheme.typography.titleMedium)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = anio, onValueChange = onAnioChange, label = { Text("Año") }, modifier = Modifier.weight(1f))
-                    OutlinedTextField(value = mes, onValueChange = onMesChange, label = { Text("Mes") }, modifier = Modifier.weight(1f))
+        ElevatedCard(
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = 8.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(0.7f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    Text(
+                        text = "Detalle de Boleta",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = blue,
+                        modifier = Modifier.padding(start = 30.dp, top = 15.dp, bottom = 15.dp)
+                    )
+                    Text(
+                        text = "Para ver el detalle de los cargos de la boleta/factura emitida, debe ingresar el cliente que requiere consultar y finalmente el botón Ver detalle",
+                        fontSize = 16.sp,
+                        color = blue,
+                        modifier = Modifier.padding(start = 30.dp, top = 15.dp, bottom = 30.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onGenerate, enabled = rutCliente.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text("Generar Boleta") }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                Text("Consultar Historial de Boletas", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onSearch, enabled = rutCliente.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text("Buscar Historial") }
+                Spacer(modifier = Modifier.height(16.dp))
+                IngresarIdCliente(
+                    idCliente = idCliente,
+                    onIdClienteChange = onIdClienteChange,
+                )
+                Spacer(modifier = Modifier.height(50.dp))
+                BotonBusqueda(
+                    idCliente = idCliente,
+                    mostrarLista = mostrarLista,
+                    onToggleLista = onToggleLista,
+                )
             }
         }
     }
 
     @Composable
-    private fun BoletasTable(boletas: List<Boleta>, onBoletaClick: (Boleta) -> Unit) {
-        Column(modifier = Modifier.fillMaxWidth(0.8f)) {
-            Row(modifier = Modifier.fillMaxWidth().background(blue.copy(alpha = 0.1f)).padding(12.dp)) {
-                Text("Periodo", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = blue)
-                Text("Consumo (kWh)", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = blue)
-                Text("Total a Pagar", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = blue)
-            }
-            HorizontalDivider()
+    private fun IngresarIdCliente(
+        idCliente: String,
+        onIdClienteChange: (String) -> Unit,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(
+                space = 100.dp,
+                alignment = Alignment.CenterHorizontally
+            )
+        ) {
+            Text(
+                text = "Número de Cliente:",
+                fontSize = 16.sp,
+                color = blue,
+                fontWeight = FontWeight.Bold
+            )
 
-            LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                items(boletas.sortedByDescending { it.getAnio() * 100 + it.getMes() }) { boleta ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp).clickable { onBoletaClick(boleta) },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("${boleta.getMes().toString().padStart(2, '0')}/${boleta.getAnio()}", modifier = Modifier.weight(1f))
-                        Text(boleta.getKwhTotal().toString(), modifier = Modifier.weight(1f))
-                        Text("\$${boleta.getDetalle().total}", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                    }
-                    HorizontalDivider(thickness = 0.5.dp)
+            OutlinedTextField(
+                value = idCliente,
+                onValueChange = onIdClienteChange,
+                label = { Text("Ingresar el número de cliente") },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.height(60.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = blue,
+                    unfocusedBorderColor = Color.Gray,
+                    focusedLabelColor = blue
+                ),
+                singleLine = true
+            )
+        }
+    }
+
+    @Composable
+    private fun BotonBusqueda(
+        idCliente: String,
+        mostrarLista: Boolean,
+        onToggleLista: () -> Unit,
+    ) {
+        var error by remember { mutableStateOf<String?>(null) }
+        var ok by remember { mutableStateOf<String?>(null) }
+
+
+        Button(
+            onClick = onToggleLista,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = blue
+            )
+        ) {
+            Text(text = if (mostrarLista) "Ocultar resultados" else "Buscar")
+        }
+    }
+
+    @Composable
+    private fun MostrarTablaBoletas(idCliente: String) {
+        val boletas = remember {
+            mutableStateListOf(
+                BoletaItem("15/10/2024", "350", "$50.000"),
+                BoletaItem("15/09/2024", "420", "$65.000"),
+                BoletaItem("15/08/2024", "280", "$42.000"),
+                BoletaItem("15/07/2024", "395", "$58.500"),
+                BoletaItem("15/06/2024", "310", "$47.000"),
+                BoletaItem("15/05/2024", "445", "$70.250"),
+                BoletaItem("15/04/2024", "268", "$39.800"),
+                BoletaItem("15/03/2024", "380", "$55.200"),
+                BoletaItem("15/02/2024", "505", "$78.900"),
+                BoletaItem("15/01/2024", "425", "$66.300"),
+                BoletaItem("15/12/2023", "315", "$48.500"),
+                BoletaItem("15/11/2023", "290", "$43.700")
+            )
+        }
+
+        ElevatedCard(
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = 8.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .fillMaxWidth(0.7f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+
+
+                Text(
+                    text = "Resultados para Cliente: $idCliente",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = blue,
+                    modifier = Modifier.padding(bottom = 16.dp, start = 24.dp)
+                )
+
+                Text(
+                    text = "Últimas Boletas",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = blue,
+                    modifier = Modifier.padding(bottom = 16.dp, start = 24.dp)
+                )
+
+                // Encabezados de la tabla
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(blue.copy(alpha = 0.1f))
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    HeaderTabla("Fecha de Emisión", Modifier.weight(1.5f))
+                    HeaderTabla("Consumo (kWh)", Modifier.weight(1.5f))
+                    HeaderTabla("Total a Pagar ($)", Modifier.weight(1.5f))
+                    HeaderTabla("Opciones", Modifier.weight(1f))
+                }
+
+                HorizontalDivider(thickness = 1.dp, color = Color.LightGray)
+
+                boletas.forEach { boleta ->
+                    FilasTabla(boleta, blue)
+                    HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
                 }
             }
         }
     }
 
     @Composable
-    private fun DetalleBoletaDialog(boleta: Boleta, onDismiss: () -> Unit, onDownloadPdf: () -> Unit) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("Detalle de la Boleta - ${boleta.getMes()}/${boleta.getAnio()}") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetalleRow("Cliente:", boleta.getIdCliente())
-                    DetalleRow("Consumo del Periodo:", "${boleta.getKwhTotal()} kWh")
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    DetalleRow("Cargos Fijos:", "\$${boleta.getDetalle().cargos}")
-                    DetalleRow("Costo Consumo:", "\$${boleta.getDetalle().subtotal - boleta.getDetalle().cargos}") // Cálculo del costo del consumo
-                    DetalleRow("Subtotal:", "\$${boleta.getDetalle().subtotal}", isBold = true)
-                    DetalleRow("IVA (19%):", "\$${boleta.getDetalle().iva}")
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    DetalleRow("TOTAL A PAGAR:", "\$${boleta.getDetalle().total}", isBold = true, isTotal = true)
-                }
-            },
-            confirmButton = {
-                Button(onClick = onDownloadPdf) { Text("Descargar PDF") }
-            },
-            dismissButton = {
-                Button(onClick = onDismiss) { Text("Cerrar") }
-            }
+    private fun HeaderTabla(text: String, modifier: Modifier = Modifier) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF001689),
+            modifier = modifier
         )
     }
 
     @Composable
-    private fun DetalleRow(label: String, value: String, isBold: Boolean = false, isTotal: Boolean = false) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal)
-            Text(value, fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal, color = if (isTotal) blue else Color.Unspecified)
+    private fun FilasTabla(boleta: BoletaItem, blue: Color) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = boleta.fechaEmision,
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                modifier = Modifier.weight(1.5f)
+            )
+            Text(
+                text = boleta.consumoKwh,
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                modifier = Modifier.weight(1.5f)
+            )
+            Text(
+                text = boleta.totalPagar,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = blue,
+                modifier = Modifier.weight(1.5f)
+            )
+            Button(
+                onClick = { /* Acción al presionar opciones */ },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = blue
+                )
+            ) {
+                Text("Ver detalle")
+            }
         }
     }
+
+    // Para probar nomas
+    data class BoletaItem(
+        val fechaEmision: String,
+        val consumoKwh: String,
+        val totalPagar: String
+    )
 }

@@ -5,7 +5,9 @@ import org.example.cgeproject.dominio.ExportablePDF
 /**
  * Servicio para generar archivos PDF a partir de datos exportables.
  */
-expect class PdfService() {
+class PdfService() {
 
-    fun generarPdf(exportable: ExportablePDF): ByteArray
+    fun generarPdf(exportable: ExportablePDF): ByteArray {
+        TODO("Implementar la generación de PDF utilizando una biblioteca adecuada")
+    }
 }

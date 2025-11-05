@@ -10,7 +10,6 @@ class TarifaService {
      * En esta versión, siempre devuelve una TarifaResidencial fija.
      */
     fun tarifaPara(cliente: Cliente): Tarifa {
-        // Lógica de ejemplo: todos los clientes tienen la misma tarifa.
-        return TarifaResidencial()
+        TODO()
     }
 }

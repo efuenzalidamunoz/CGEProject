@@ -2,7 +2,6 @@ package org.example.cgeproject.dominio
 
 import kotlin.math.round
 
-
 class TarifaResidencial : Tarifa {
     private val costoPorKwh = 150.0
     private val cargoFijo = 1000.0

@@ -16,10 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 import org.example.cgeproject.dominio.Cliente
 import org.example.cgeproject.dominio.EstadoCliente
-import org.example.cgeproject.persistencia.ClienteRepositorio
 
 // Enum para controlar qué pantalla se muestra
 private enum class Pantalla {
@@ -27,8 +25,7 @@ private enum class Pantalla {
     FORMULARIO
 }
 
-// La clase ahora toma el repositorio como dependencia
-class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
+class PantallaClientes {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
@@ -37,21 +34,19 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
         var pantallaActual by remember { mutableStateOf(Pantalla.LISTA) }
         var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
 
-        // Estado para la lista de clientes, cargada desde el repositorio
-        var clientes by remember { mutableStateOf<List<Cliente>>(emptyList()) }
-        val scope = rememberCoroutineScope()
-
-        // Carga los clientes cuando la pantalla de lista se muestra
-        LaunchedEffect(pantallaActual) {
-            if (pantallaActual == Pantalla.LISTA) {
-                clientes = clienteRepositorio.listar()
-            }
-        }
+        // --- Datos de Ejemplo para visualizar el Frontend ---
+        // TODO: Reemplazar esta lista con los datos de tu ViewModel o Repositorio
+        val clientesDeEjemplo = listOf(
+            Cliente("111-1", "Ana Torres", "ana.t@example.com", "Calle Falsa 123", EstadoCliente.ACTIVO),
+            Cliente("222-2", "Luis Vera", "luis.v@example.com", "Av. Siempre Viva 742", EstadoCliente.ACTIVO),
+            Cliente("333-3", "Carla Soto", "carla.s@example.com", "Pasaje Corto 45", EstadoCliente.INACTIVO)
+        )
+        // --- Fin de Datos de Ejemplo ---
 
         when (pantallaActual) {
             Pantalla.LISTA -> {
                 GestionClientesContent(
-                    clientes = clientes,
+                    clientes = clientesDeEjemplo,
                     onAddCliente = {
                         clienteSeleccionado = null
                         pantallaActual = Pantalla.FORMULARIO
@@ -61,28 +56,20 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
                         pantallaActual = Pantalla.FORMULARIO
                     },
                     onDeleteCliente = { cliente ->
-                        scope.launch {
-                            clienteRepositorio.eliminar(cliente.getRut())
-                            // Refresca la lista
-                            clientes = clienteRepositorio.listar()
-                        }
+                        // TODO: Implementar la lógica para eliminar el cliente en tu ViewModel/Repositorio
+                        println("Lógica para eliminar a: ${cliente.getNombre()}")
                     }
                 )
             }
+
             Pantalla.FORMULARIO -> {
                 RegisterOrEditContent(
                     cliente = clienteSeleccionado,
                     onNavigateBack = { pantallaActual = Pantalla.LISTA },
                     onSaveCliente = { clienteGuardado ->
-                        scope.launch {
-                            if (clienteSeleccionado == null) {
-                                clienteRepositorio.crear(clienteGuardado)
-                            } else {
-                                clienteRepositorio.actualizar(clienteGuardado)
-                            }
-                            // Vuelve a la lista, lo que disparará la recarga de datos
-                            pantallaActual = Pantalla.LISTA
-                        }
+                        // TODO: Implementar la lógica para crear o actualizar el cliente en tu ViewModel/Repositorio
+                        println("Lógica para guardar a: ${clienteGuardado.getNombre()}")
+                        pantallaActual = Pantalla.LISTA // Vuelve a la lista después de guardar
                     }
                 )
             }
@@ -110,7 +97,12 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
         }
 
         Scaffold(
-            topBar = { TopAppBar(title = { Text("Gestión de Clientes", color = Color.White) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)) },
+            topBar = {
+                TopAppBar(
+                    title = { Text("Gestión de Clientes", color = Color.White) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)
+                )
+            },
             floatingActionButton = {
                 FloatingActionButton(onClick = onAddCliente, containerColor = blue) {
                     Text("+", fontSize = 24.sp, color = Color.White)
@@ -118,10 +110,7 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier.fillMaxSize()
-                    .background(backgroundColor)
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 OutlinedTextField(
@@ -136,7 +125,7 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxHeight()) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(clientesFiltrados) { cliente ->
                         ClienteItem(
                             cliente = cliente,
@@ -189,7 +178,7 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
         var nombre by remember { mutableStateOf(clienteAEditar?.getNombre() ?: "") }
         var email by remember { mutableStateOf(clienteAEditar?.getEmail() ?: "") }
         var direccionFacturacion by remember { mutableStateOf(clienteAEditar?.getDireccionFacturacion() ?: "") }
-        var estado by remember { mutableStateOf(clienteAEditar?.getEstado() ?: EstadoCliente.ACTIVO) } // Default to ACTIVO
+        var estado by remember { mutableStateOf(clienteAEditar?.getEstado() ?: EstadoCliente.INACTIVO) }
         var error by remember { mutableStateOf<String?>(null) }
 
         ElevatedCard(
@@ -211,10 +200,20 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
                 CampoRegistroCliente(rut, onChange = { rut = it }, label = "Rut", enabled = clienteAEditar == null)
                 CampoRegistroCliente(nombre, onChange = { nombre = it }, label = "Nombre")
                 CampoRegistroCliente(email, onChange = { email = it }, label = "Email")
-                CampoRegistroCliente(direccionFacturacion, onChange = { direccionFacturacion = it }, label = "Dirección de Facturación")
+                CampoRegistroCliente(
+                    direccionFacturacion,
+                    onChange = { direccionFacturacion = it },
+                    label = "Dirección de Facturación"
+                )
                 SelectorEstadoCliente(selectedState = estado, onStateSelected = { estado = it })
 
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+                error?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -243,22 +242,30 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
     @Composable
     private fun ClienteItem(cliente: Cliente, onEdit: () -> Unit, onDelete: () -> Unit) {
         ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(16.dp)
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = cliente.getNombre(), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = blue)
                     Text("RUT: ${cliente.getRut()}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Estado: ${cliente.getEstado()}", style = MaterialTheme.typography.bodyMedium, color = if (cliente.getEstado() == EstadoCliente.ACTIVO) Color(0xFF008000) else Color.Gray)
+                    Text(
+                        "Estado: ${cliente.getEstado()}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (cliente.getEstado() == EstadoCliente.ACTIVO) Color(0xFF008000) else Color.Gray
+                    )
                 }
                 Row {
-                    Button(onClick = onEdit, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA500))) { Text("Editar") }
+                    Button(
+                        onClick = onEdit,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFA500))
+                    ) { Text("Editar") }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onDelete, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Eliminar") }
+                    Button(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Eliminar") }
                 }
             }
         }
@@ -270,13 +277,23 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
             onDismissRequest = onDismiss,
             title = { Text("Confirmar Eliminación") },
             text = { Text("¿Estás seguro de que deseas eliminar al cliente '${cliente.getNombre()}'?") },
-            confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Eliminar") } },
+            confirmButton = {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar") }
+            },
             dismissButton = { Button(onClick = onDismiss) { Text("Cancelar") } }
         )
     }
 
     @Composable
-    private fun CampoRegistroCliente(value: String, onChange: (String) -> Unit, label: String, enabled: Boolean = true) {
+    private fun CampoRegistroCliente(
+        value: String,
+        onChange: (String) -> Unit,
+        label: String,
+        enabled: Boolean = true
+    ) {
         Text(text = "$label:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = blue)
         OutlinedTextField(
             value = value,
@@ -303,7 +320,7 @@ class PantallaClientes(private val clienteRepositorio: ClienteRepositorio) {
                 label = { Text("Estado") },
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.height(60.dp).fillMaxWidth().clickable { expanded = true },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue)
             )
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 EstadoCliente.values().forEach { estado ->

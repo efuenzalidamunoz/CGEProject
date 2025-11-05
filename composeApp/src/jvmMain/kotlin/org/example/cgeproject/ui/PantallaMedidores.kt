@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,34 +14,36 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
-import org.example.cgeproject.dominio.Cliente
-import org.example.cgeproject.dominio.Medidor
-import org.example.cgeproject.dominio.MedidorMonofasico
-import org.example.cgeproject.dominio.MedidorTrifasico
-import org.example.cgeproject.persistencia.ClienteRepositorio
-import org.example.cgeproject.persistencia.MedidorRepositorio
 
+// --- Modelo de Dominio (Asumido) ---
+// TODO: Reemplazar con tu clase de dominio real.
+data class Medidor(
+    val codigo: String,
+    val tipo: String, // E.g., "Monofásico", "Trifásico"
+    val rutCliente: String
+)
+
+// --- Enum para Navegación ---
 private enum class PantallaMedidor {
     LISTA,
     FORMULARIO
 }
 
-class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, private val clienteRepositorio: ClienteRepositorio) {
+class PantallaMedidores {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
+
+    // --- Datos de Ejemplo ---
+    // TODO: Reemplazar con las llamadas a tu repositorio.
+    private val medidoresDeEjemplo = listOf(
+        Medidor("MED-001", "Monofásico", "111-1"),
+        Medidor("MED-002", "Monofásico", "111-1"),
+        Medidor("MED-003", "Trifásico", "222-2")
+    )
 
     @Composable
     fun PantallaPrincipal() {
         var pantallaActual by remember { mutableStateOf(PantallaMedidor.LISTA) }
-        val scope = rememberCoroutineScope()
-
-        var listaDeClientes by remember { mutableStateOf<List<Cliente>>(emptyList()) }
-
-        LaunchedEffect(Unit) {
-            listaDeClientes = clienteRepositorio.listar()
-        }
 
         when (pantallaActual) {
             PantallaMedidor.LISTA -> {
@@ -50,13 +53,11 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
             }
             PantallaMedidor.FORMULARIO -> {
                 FormularioMedidorContent(
-                    clientes = listaDeClientes,
                     onNavigateBack = { pantallaActual = PantallaMedidor.LISTA },
-                    onSave = { medidor, rutCliente ->
-                        scope.launch {
-                            medidorRepositorio.crear(medidor, rutCliente)
-                            pantallaActual = PantallaMedidor.LISTA
-                        }
+                    onSave = { medidor ->
+                        // TODO: Implementar lógica de 'crear(m: Medidor, rutCliente: String)'
+                        println("Guardando nuevo medidor: $medidor")
+                        pantallaActual = PantallaMedidor.LISTA
                     }
                 )
             }
@@ -67,75 +68,76 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
     @Composable
     private fun GestionMedidoresContent(onNavigateToForm: () -> Unit) {
         var searchQuery by remember { mutableStateOf("") }
-        var medidoresEncontrados by remember { mutableStateOf<List<Medidor>>(emptyList()) }
+        var medidoresFiltrados by remember { mutableStateOf<List<Medidor>>(emptyList()) }
         var medidorParaDetalle by remember { mutableStateOf<Medidor?>(null) }
         var medidorParaEliminar by remember { mutableStateOf<Medidor?>(null) }
-        val scope = rememberCoroutineScope()
-
-        LaunchedEffect(searchQuery) {
-            if (searchQuery.isBlank()) {
-                medidoresEncontrados = emptyList()
-            }
-        }
 
         Scaffold(
-            topBar = { TopAppBar(title = { Text("Gestión de Medidores", color = Color.White) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)) },
-            floatingActionButton = { FloatingActionButton(onClick = onNavigateToForm, containerColor = blue) { Text("+", color = Color.White, fontSize = 24.sp) } }
+            topBar = {
+                TopAppBar(
+                    title = { Text("Gestión de Medidores", color = Color.White) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = onNavigateToForm, containerColor = blue) {
+                    Text("+", color = Color.White, fontSize = 24.sp)
+                }
+            }
         ) { paddingValues ->
-            Column(modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                // Barra de búsqueda
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Buscar por RUT de Cliente o Código de Medidor") },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        Button(onClick = {
-                            scope.launch {
-                                val medidorPorCodigo = medidorRepositorio.obtenerPorCodigo(searchQuery)
-                                if (medidorPorCodigo != null) {
-                                    medidoresEncontrados = listOf(medidorPorCodigo)
-                                } else {
-                                    medidoresEncontrados = medidorRepositorio.listarPorCliente(searchQuery)
-                                }
+                    onValueChange = {
+                        searchQuery = it
+                        // TODO: Implementar lógica de 'listarPorCliente' y 'obtenerPorCodigo'
+                        medidoresFiltrados = if (searchQuery.isNotBlank()) {
+                            medidoresDeEjemplo.filter { medidor ->
+                                medidor.rutCliente.contains(searchQuery, true) || medidor.codigo.contains(searchQuery, true)
                             }
-                        }) { Text("Buscar") }
-                    }
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    label = { Text("Buscar por RUT de Cliente o Código de Medidor") },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (medidoresEncontrados.isEmpty()) {
-                    Text("Ingrese un RUT o código para buscar medidores.", modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp))
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(medidoresEncontrados) { medidor ->
-                            MedidorItem(
-                                medidor = medidor,
-                                onClick = { medidorParaDetalle = medidor },
-                                onDelete = { medidorParaEliminar = medidor }
-                            )
-                        }
+                // Lista de resultados
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(medidoresFiltrados) { medidor ->
+                        MedidorItem(
+                            medidor = medidor,
+                            onClick = { medidorParaDetalle = medidor },
+                            onDelete = { medidorParaEliminar = medidor }
+                        )
                     }
                 }
             }
 
-            medidorParaDetalle?.let { DetalleMedidorDialog(medidor = it, onDismiss = { medidorParaDetalle = null }) }
+            // Diálogo de detalles
+            medidorParaDetalle?.let {
+                DetalleMedidorDialog(medidor = it, onDismiss = { medidorParaDetalle = null })
+            }
 
+            // Diálogo de eliminación
             medidorParaEliminar?.let {
                 EliminarMedidorDialog(
                     medidor = it,
                     onDismiss = { medidorParaEliminar = null },
                     onConfirm = {
-                        scope.launch {
-                            medidorRepositorio.eliminar(it.getCodigo())
-                            val medidorPorCodigo = medidorRepositorio.obtenerPorCodigo(searchQuery)
-                            if (medidorPorCodigo != null) {
-                                medidoresEncontrados = listOf(medidorPorCodigo)
-                            } else {
-                                medidoresEncontrados = medidorRepositorio.listarPorCliente(searchQuery)
-                            }
-                            medidorParaEliminar = null
-                        }
+                        // TODO: Implementar lógica de 'eliminar(codigo)'
+                        println("Eliminando medidor: ${it.codigo}")
+                        medidorParaEliminar = null
                     }
                 )
             }
@@ -143,11 +145,10 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
     }
 
     @Composable
-    private fun FormularioMedidorContent(clientes: List<Cliente>, onNavigateBack: () -> Unit, onSave: (Medidor, String) -> Unit) {
+    private fun FormularioMedidorContent(onNavigateBack: () -> Unit, onSave: (Medidor) -> Unit) {
         var codigo by remember { mutableStateOf("") }
-        var tipo by remember { mutableStateOf("Monofásico") }
-        var direccion by remember { mutableStateOf("") }
-        var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
+        var tipo by remember { mutableStateOf("") }
+        var rutCliente by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
 
         Column(modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -157,13 +158,8 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
                     Spacer(modifier = Modifier.height(24.dp))
 
                     OutlinedTextField(value = codigo, onValueChange = { codigo = it }, label = { Text("Código del Medidor") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección de Suministro") }, modifier = Modifier.fillMaxWidth())
-                    
-                    // Selector de Tipo de Medidor
-                    val tipos = listOf("Monofásico", "Trifásico")
-                    TipoDropDown(tipos = tipos, selectedTipo = tipo, onTipoSelected = { tipo = it })
-
-                    ClienteDropDown(clientes = clientes, selectedCliente = clienteSeleccionado, onClienteSelected = { clienteSeleccionado = it })
+                    OutlinedTextField(value = tipo, onValueChange = { tipo = it }, label = { Text("Tipo de Medidor (Ej: Monofásico)") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = rutCliente, onValueChange = { rutCliente = it }, label = { Text("RUT del Cliente Asociado") }, modifier = Modifier.fillMaxWidth())
 
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
 
@@ -171,28 +167,11 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
                     Row {
                         Button(
                             onClick = {
-                                val rut = clienteSeleccionado?.getRut()
-                                if (codigo.isBlank() || direccion.isBlank() || rut == null) {
+                                if (codigo.isBlank() || tipo.isBlank() || rutCliente.isBlank()) {
                                     error = "Todos los campos son obligatorios."
                                     return@Button
                                 }
-                                val nuevoMedidor: Medidor = when (tipo) {
-                                    "Monofásico" -> MedidorMonofasico(
-                                        id = "med-$codigo", createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
-                                        codigo = codigo, direccionSuministro = direccion, activo = true, idCliente = rut,
-                                        potenciaMaxKw = 5.5 // Valor de ejemplo
-                                    )
-                                    "Trifásico" -> MedidorTrifasico(
-                                        id = "med-$codigo", createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
-                                        codigo = codigo, direccionSuministro = direccion, activo = true, idCliente = rut,
-                                        potenciaMaxKw = 10.0, factorPotencia = 0.95 // Valores de ejemplo
-                                    )
-                                    else -> Medidor(
-                                        id = "med-$codigo", createdAt = Clock.System.now(), updatedAt = Clock.System.now(),
-                                        codigo = codigo, direccionSuministro = direccion, activo = true, idCliente = rut
-                                    )
-                                }
-                                onSave(nuevoMedidor, rut)
+                                onSave(Medidor(codigo, tipo, rutCliente))
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = blue)
                         ) { Text("Guardar Medidor") }
@@ -204,63 +183,28 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun TipoDropDown(tipos: List<String>, selectedTipo: String, onTipoSelected: (String) -> Unit) {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            OutlinedTextField(
-                value = selectedTipo,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Tipo de Medidor") },
-                modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-            )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.fillMaxWidth(0.5f)) {
-                tipos.forEach { tipo ->
-                    DropdownMenuItem(text = { Text(tipo) }, onClick = {
-                        onTipoSelected(tipo)
-                        expanded = false
-                    })
-                }
-            }
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun ClienteDropDown(clientes: List<Cliente>, selectedCliente: Cliente?, onClienteSelected: (Cliente) -> Unit) {
-        var expanded by remember { mutableStateOf(false) }
-        Box {
-            OutlinedTextField(
-                value = selectedCliente?.getNombre() ?: "Seleccione un cliente",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Cliente Asociado") },
-                modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-            )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.fillMaxWidth(0.5f)) {
-                clientes.forEach { cliente ->
-                    DropdownMenuItem(text = { Text("${cliente.getNombre()} (${cliente.getRut()})") }, onClick = {
-                        onClienteSelected(cliente)
-                        expanded = false
-                    })
-                }
-            }
-        }
-    }
-
     @Composable
     private fun MedidorItem(medidor: Medidor, onClick: () -> Unit, onDelete: () -> Unit) {
-        Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(medidor.getCodigo(), fontWeight = FontWeight.Bold, color = blue)
-                    Text("Tipo: ${medidor.tipo()}", style = MaterialTheme.typography.bodyMedium)
+                    Text(medidor.codigo, fontWeight = FontWeight.Bold, color = blue)
+                    Text("Tipo: ${medidor.tipo}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Cliente: ${medidor.rutCliente}", style = MaterialTheme.typography.bodySmall)
                 }
-                Button(onClick = onDelete, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Eliminar") }
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar")
+                }
             }
         }
     }
@@ -272,12 +216,14 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
             title = { Text("Detalle del Medidor") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Código: ${medidor.getCodigo()}", fontWeight = FontWeight.Bold)
-                    Text("Tipo: ${medidor.tipo()}")
-                    Text("Asociado al cliente: ${medidor.getIdCliente()}")
+                    Text("Código: ${medidor.codigo}", fontWeight = FontWeight.Bold)
+                    Text("Tipo: ${medidor.tipo}")
+                    Text("Asociado al cliente: ${medidor.rutCliente}")
                 }
             },
-            confirmButton = { Button(onClick = onDismiss) { Text("Cerrar") } }
+            confirmButton = {
+                Button(onClick = onDismiss) { Text("Cerrar") }
+            }
         )
     }
 
@@ -286,9 +232,15 @@ class PantallaMedidores(private val medidorRepositorio: MedidorRepositorio, priv
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Confirmar Eliminación") },
-            text = { Text("¿Seguro que deseas eliminar el medidor con código '${medidor.getCodigo()}'?") },
-            confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Eliminar") } },
-            dismissButton = { Button(onClick = onDismiss) { Text("Cancelar") } }
+            text = { Text("¿Seguro que deseas eliminar el medidor con código '${medidor.codigo}'?") },
+            confirmButton = {
+                Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = onDismiss) { Text("Cancelar") }
+            }
         )
     }
 }
