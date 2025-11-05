@@ -10,6 +10,7 @@ import org.example.cgeproject.dominio.MedidorTrifasico
 import java.util.Date
 import org.example.cgeproject.dominio.TarifaDetalle
 import org.example.cgeproject.dominio.EstadoBoleta
+import org.example.cgeproject.dominio.TipoTarifa
 
 /**
  * Persistencia basada en CSV (archivos por entidad).
@@ -32,7 +33,7 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         private const val LECTURAS_KEY = "lecturas"
         private const val BOLETAS_KEY = "boletas"
 
-        private const val HEADER_CLIENTES = "rut,nombre,email,direccionFacturacion,estado"
+        private const val HEADER_CLIENTES = "rut,nombre,email,direccionFacturacion,estado,tipoTarifa"
         // medidor: id,createdAt,updatedAt,codigo,direccionSuministro,activo,idCliente,tipo,potenciaMaxKw,factorPotencia
         private const val HEADER_MEDIDORES = "id,createdAt,updatedAt,codigo,direccionSuministro,activo,idCliente,tipo,potenciaMaxKw,factorPotencia"
         // lectura: id,createdAt,updatedAt,idMedidor,anio,mes,kwhLeidos
@@ -75,14 +76,16 @@ class PersistenciaDatos(private val driver: StorageDriver) {
 
     // ---------- CLIENTES ----------
     fun guardarCliente(cliente: Cliente): Boolean {
-        // Guardamos rut,nombre,email,direccionFacturacion,estado
+        // Guardamos rut,nombre,email,direccionFacturacion,estado,tipoTarifa
         val estadoStr = cliente.getEstado().toString()
+        val tipoTarifaStr = cliente.getTipoTarifa().toString()
         val linea = listOf(
             cliente.getRut(), // asumo getRut() en Persona/Cliente; cambia si tu getter tiene otro nombre
             cliente.getNombre(),
             cliente.getEmail(),
             cliente.getDireccionFacturacion(),
-            estadoStr
+            estadoStr,
+            tipoTarifaStr
         ).joinToString(",")
         return agregarLineaCSV(CLIENTES_KEY, linea)
     }
@@ -99,6 +102,7 @@ class PersistenciaDatos(private val driver: StorageDriver) {
             val email = p.getOrElse(2) { "" }
             val direccion = p.getOrElse(3) { "" }
             val estadoName = p.getOrElse(4) { "" }
+            val tipoTarifaName = p.getOrElse(5) { "RESIDENCIAL" } // Valor por defecto
 
             // asociar boletas y medidores por idCliente (rut)
             val boletasDelCliente = boletas.filter { it.getIdCliente() == rut }.toMutableList()
@@ -111,8 +115,15 @@ class PersistenciaDatos(private val driver: StorageDriver) {
                 EstadoCliente.ACTIVO // valor por defecto; ajusta según tu enum
             }
 
-            // crear Cliente usando constructor: (rut,nombre,email,direccionFacturacion,estado, boletas, medidores)
-            Cliente(rut, nombre, email, direccion, estado, boletasDelCliente.toMutableList(), medidoresDelCliente.toMutableList())
+            // interpretar enum TipoTarifa
+            val tipoTarifa = try {
+                TipoTarifa.valueOf(tipoTarifaName)
+            } catch (ex: Exception) {
+                TipoTarifa.RESIDENCIAL // valor por defecto
+            }
+
+            // crear Cliente usando constructor
+            Cliente(rut, nombre, email, direccion, estado, tipoTarifa, boletasDelCliente.toMutableList(), medidoresDelCliente.toMutableList())
         }
     }
 

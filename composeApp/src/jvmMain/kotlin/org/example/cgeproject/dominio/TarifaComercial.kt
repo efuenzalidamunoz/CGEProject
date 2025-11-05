@@ -19,17 +19,17 @@ class TarifaComercial(
 
     override fun calcular(kwh: Double): TarifaDetalle {
         val costoConsumo = kwh * precioKwh
-        val subtotal = costoConsumo + cargoFijo
-        val montoRecargo = subtotal * recargoComercial
-        val subtotalConRecargo = subtotal + montoRecargo
-        val montoIva = round(subtotalConRecargo * iva)
-        val total = subtotalConRecargo + montoIva
+        val montoRecargo = (costoConsumo + cargoFijo) * recargoComercial
+        val cargosAdicionales = cargoFijo + montoRecargo
+        val subtotal = costoConsumo
+        val ivaCalculado = round((subtotal + cargosAdicionales) * iva)
+        val total = subtotal + cargosAdicionales + ivaCalculado
 
         return TarifaDetalle(
             kwh = kwh,
-            subtotal = subtotalConRecargo,
-            cargos = cargoFijo + montoRecargo,
-            iva = montoIva,
+            subtotal = subtotal,
+            cargos = cargosAdicionales,
+            iva = ivaCalculado,
             total = total
         )
     }

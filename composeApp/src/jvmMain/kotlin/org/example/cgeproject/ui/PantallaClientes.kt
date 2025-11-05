@@ -48,11 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Cliente
 import org.example.cgeproject.dominio.EstadoCliente
+import org.example.cgeproject.dominio.TipoTarifa
 import org.example.cgeproject.persistencia.ClienteRepoImpl
 import org.example.cgeproject.persistencia.FileSystemStorageDriver
 import org.example.cgeproject.persistencia.PersistenciaDatos
 
-// Enum para controlar qué pantalla se muestra
 private enum class Pantalla {
     LISTA,
     FORMULARIO
@@ -86,7 +86,7 @@ class PantallaClientes {
                     },
                     onDeleteCliente = { cliente ->
                         repo.eliminar(cliente.getRut())
-                        clientes = repo.listar() // refresh
+                        clientes = repo.listar()
                     }
                 )
             }
@@ -101,8 +101,8 @@ class PantallaClientes {
                         } else {
                             repo.actualizar(clienteGuardado)
                         }
-                        clientes = repo.listar() // refresh
-                        pantallaActual = Pantalla.LISTA // Vuelve a la lista después de guardar
+                        clientes = repo.listar()
+                        pantallaActual = Pantalla.LISTA
                     }
                 )
             }
@@ -228,6 +228,7 @@ class PantallaClientes {
                 clienteAEditar?.getEstado() ?: EstadoCliente.INACTIVO
             )
         }
+        var tipoTarifa by remember { mutableStateOf(clienteAEditar?.getTipoTarifa() ?: TipoTarifa.RESIDENCIAL) }
         var error by remember { mutableStateOf<String?>(null) }
 
         ElevatedCard(
@@ -261,6 +262,7 @@ class PantallaClientes {
                     label = "Dirección de Facturación"
                 )
                 SelectorEstadoCliente(selectedState = estado, onStateSelected = { estado = it })
+                SelectorTipoTarifa(selectedTarifa = tipoTarifa, onTarifaSelected = { tipoTarifa = it })
 
                 error?.let {
                     Text(
@@ -284,7 +286,7 @@ class PantallaClientes {
                                 error = "Ya existe un cliente con ese RUT"
                                 return@Button
                             }
-                            onSave(Cliente(rut, nombre, email, direccionFacturacion, estado))
+                            onSave(Cliente(rut, nombre, email, direccionFacturacion, estado, tipoTarifa))
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = blue)
                     ) {
@@ -401,6 +403,35 @@ class PantallaClientes {
                 EstadoCliente.values().forEach { estado ->
                     DropdownMenuItem(text = { Text(estado.name) }, onClick = {
                         onStateSelected(estado)
+                        expanded = false
+                    })
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    @Composable
+    private fun SelectorTipoTarifa(
+        selectedTarifa: TipoTarifa,
+        onTarifaSelected: (TipoTarifa) -> Unit
+    ) {
+        var expanded by remember { mutableStateOf(false) }
+        Text(text = "Tipo de Tarifa:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = blue)
+        Box {
+            OutlinedTextField(
+                value = selectedTarifa.name,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Tipo de Tarifa") },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.height(60.dp).fillMaxWidth().clickable { expanded = true },
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue)
+            )
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                TipoTarifa.values().forEach { tarifa ->
+                    DropdownMenuItem(text = { Text(tarifa.name) }, onClick = {
+                        onTarifaSelected(tarifa)
                         expanded = false
                     })
                 }
