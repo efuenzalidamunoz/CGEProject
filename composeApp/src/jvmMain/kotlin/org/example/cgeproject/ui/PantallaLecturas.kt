@@ -434,6 +434,7 @@ class PantallaLecturas {
         }
     }
 
+    /** Composable que representa la tarjeta de búsqueda de lecturas. */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SearchCard(
