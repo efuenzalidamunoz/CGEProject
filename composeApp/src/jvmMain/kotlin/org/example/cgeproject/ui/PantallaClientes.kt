@@ -192,6 +192,7 @@ class PantallaClientes {
     }
 
     @Composable
+    /** muestra el formulario de registro o edición de un cliente.*/
     private fun RegisterOrEditContent(
         cliente: Cliente?,
         onNavigateBack: () -> Unit,
@@ -304,6 +305,7 @@ class PantallaClientes {
     }
 
     @Composable
+    /** Creamos el cliente y obtenemos sus datos */
     private fun ClienteItem(cliente: Cliente, onEdit: () -> Unit, onDelete: () -> Unit) {
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
@@ -344,6 +346,7 @@ class PantallaClientes {
     }
 
     @Composable
+    /** Eliminamos el cliente que no necesitamos */
     private fun DeleteConfirmationDialog(
         cliente: Cliente,
         onConfirm: () -> Unit,
@@ -364,6 +367,7 @@ class PantallaClientes {
     }
 
     @Composable
+    /** Registro de cliente */
     private fun CampoRegistroCliente(
         value: String,
         onChange: (String) -> Unit,
@@ -386,6 +390,7 @@ class PantallaClientes {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Selecciona el estado del cliente  ACTIVO/INACTIVO */
     private fun SelectorEstadoCliente(
         selectedState: EstadoCliente,
         onStateSelected: (EstadoCliente) -> Unit
@@ -427,6 +432,7 @@ class PantallaClientes {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Selecciona el tipo de tarifa que tenga el cliente */
     private fun SelectorTipoTarifa(
         selectedTarifa: TipoTarifa,
         onTarifaSelected: (TipoTarifa) -> Unit

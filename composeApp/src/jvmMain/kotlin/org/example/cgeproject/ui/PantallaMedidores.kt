@@ -108,6 +108,7 @@ class PantallaMedidores {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Gestiana la vizualización y busqueda de los medidores */
     private fun GestionMedidoresContent(
         onNavigateToForm: () -> Unit,
         onSearch: (String) -> List<Medidor>,
@@ -186,6 +187,7 @@ class PantallaMedidores {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Este es el formualario de captura de contenido de los medidores */
     private fun FormularioMedidorContent(
         onNavigateBack: () -> Unit,
         onSave: (Medidor, String) -> Unit
@@ -324,6 +326,7 @@ class PantallaMedidores {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Campo donde seleccionamos el tipo de medidor que corresponda **/
     private fun SelectorTipoMedidor(selected: TipoMedidor, onSelect: (TipoMedidor) -> Unit) {
         var expanded by remember { mutableStateOf(false) }
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -357,6 +360,9 @@ class PantallaMedidores {
     }
 
     @Composable
+    /** Representa un elemento de medidor en una lista.
+     * Muestra a informacion clave de los medidores y proporciona acciones para ver detalles y eliminar.
+     */
     private fun MedidorItem(medidor: Medidor, onClick: () -> Unit, onDelete: () -> Unit) {
         ElevatedCard(
             modifier = Modifier.clickable(onClick = onClick),
@@ -392,6 +398,7 @@ class PantallaMedidores {
     }
 
     @Composable
+    /** Esto se rellena con todos los campos de la clase medidor */
     private fun DetalleMedidorDialog(medidor: Medidor, onDismiss: () -> Unit) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -416,6 +423,7 @@ class PantallaMedidores {
     }
 
     @Composable
+    /** Eliminamos los medidores que no necesitamos **/
     private fun EliminarMedidorDialog(
         medidor: Medidor,
         onDismiss: () -> Unit,

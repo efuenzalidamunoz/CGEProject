@@ -74,12 +74,14 @@ class PantallaLecturas {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
-    // --- Repositorios ---
     private val repo = LecturaRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
     private val clienteRepo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
     private val medidorRepo = MedidorRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
+    /** Selecciona entre pantallas y nos ayuda en la navegación de las
+     * pantallas secundarias
+     * **/
     fun PantallaPrincipal() {
         var pantallaActual by remember { mutableStateOf(PantallaLectura.LISTA) }
 
@@ -106,6 +108,7 @@ class PantallaLecturas {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Esta funcion muestra la tabla con las lecturas de un medidor asociado **/
     private fun GestionLecturasContent(onNavigateToForm: () -> Unit) {
         var idMedidor by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf("") }
@@ -253,6 +256,9 @@ class PantallaLecturas {
         }
     }
 
+    /** Esta función gestiona su propio estado interno para los campos del formulario y
+    * contiene la lógica para cargar datos (medidores) y validar la entrada del usuario.
+     **/
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun FormularioLecturaContent(
@@ -531,6 +537,7 @@ class PantallaLecturas {
         }
     }
 
+    /** Formatea una fecha para mostrarla en un formato legible. */
     private fun formatDisplayDate(date: Date): String {
         val formatter = SimpleDateFormat("dd/MM/yyyy")
         return formatter.format(date)
@@ -553,6 +560,7 @@ class PantallaLecturas {
     }
 
     @Composable
+    /** Muestra los resultados de los consumos */
     private fun ResultsTable(lecturas: List<LecturaConsumo>, onDelete: (String) -> Unit) {
         Column {
             // Encabezado de la tabla

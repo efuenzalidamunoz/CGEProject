@@ -77,6 +77,7 @@ class PantallaBoletas {
     }
 
     @Composable
+    /** Enlosta en una tabla todo el contenido de las boletas */
     private fun ListarBoletasContent(onNavigateToForm: () -> Unit) {
         var idCliente by remember { mutableStateOf("") }
         var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
@@ -165,6 +166,7 @@ class PantallaBoletas {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Captura todos los datos necesarios para la boleta */
     private fun FormularioBoletaContent(
         onNavigateBack: () -> Unit,
         onSaveBoleta: (String, String, Int, Int, Double) -> Unit,
@@ -375,9 +377,11 @@ class PantallaBoletas {
         }
     }
 
-    // --- Composables del diseño original (Reutilizados y adaptados) ---
-
     @Composable
+    /**
+     * Sección de encabezado para la pantalla de boletas.
+     * Muestra un título y una descripción en un fondo azul.
+     */
     private fun HeaderSection() {
         Box(modifier = Modifier.fillMaxWidth().height(400.dp).background(blue)) {
             Column(
@@ -395,6 +399,8 @@ class PantallaBoletas {
     }
 
     @Composable
+
+    /** Permite al usuario ingresar el rut del cliente y buscar las boletas asociadas */
     private fun BodyBusqueda(idCliente: String, onIdClienteChange: (String) -> Unit, onSearch: () -> Unit) {
         ElevatedCard(
             modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
@@ -428,6 +434,7 @@ class PantallaBoletas {
     }
 
     @Composable
+    /** Enlista las boletas */
     private fun MostrarTablaBoletas(
         idCliente: String,
         boletas: List<Boleta>,
@@ -470,11 +477,13 @@ class PantallaBoletas {
     }
 
     @Composable
+    /** Formato de la tabla boleta */
     private fun HeaderTabla(text: String, modifier: Modifier = Modifier) {
         Text(text, fontWeight = FontWeight.Bold, color = blue, modifier = modifier)
     }
 
     @Composable
+    /** Formato de las filas de la tabla boleta */
     private fun FilasTabla(boleta: Boleta, onVerDetalle: (Boleta) -> Unit, onEliminarBoleta: (Boleta) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("${boleta.getMes()}/${boleta.getAnio()}", modifier = Modifier.weight(1f))
@@ -538,6 +547,7 @@ class PantallaBoletas {
         )
     }
 
+    /** Formato de la lectura */
     private fun formatLecturaForDisplay(lectura: LecturaConsumo): String {
         val formatter = SimpleDateFormat("dd/MM/yyyy")
         return "Fecha: ${formatter.format(lectura.getCreatedAt())}, Consumo: ${"%.2f".format(lectura.getKwhLeidos())} kWh"
