@@ -232,7 +232,12 @@ class PantallaBoletas {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            ElevatedCard(modifier = Modifier.fillMaxWidth(0.7f)) {
+            ElevatedCard(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+            ) {
                 Column(modifier = Modifier.padding(32.dp)) {
                     Text("Emitir Nueva Boleta", style = MaterialTheme.typography.headlineMedium, color = blue)
                     Spacer(modifier = Modifier.height(24.dp))
@@ -395,7 +400,8 @@ class PantallaBoletas {
         ElevatedCard(
             modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
             shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
         ) {
             Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
@@ -429,7 +435,12 @@ class PantallaBoletas {
         onVerDetalle: (Boleta) -> Unit,
         onEliminarBoleta: (Boleta) -> Unit // Nueva función para eliminar
     ) {
-        ElevatedCard(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp).fillMaxWidth(0.7f)) {
+        ElevatedCard(
+            modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+        ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
                     "Resultados para Cliente: $idCliente",

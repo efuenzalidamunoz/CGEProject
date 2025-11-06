@@ -19,12 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -182,6 +181,7 @@ class PantallaMedidores {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun FormularioMedidorContent(
         onNavigateBack: () -> Unit,
@@ -205,7 +205,13 @@ class PantallaMedidores {
             modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ElevatedCard(modifier = Modifier.fillMaxWidth(0.7f).padding(top = 50.dp)) {
+            ElevatedCard(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+
+            ) {
                 Column(modifier = Modifier.padding(32.dp)) {
                     Text(
                         "Registrar Nuevo Medidor",
@@ -313,23 +319,35 @@ class PantallaMedidores {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SelectorTipoMedidor(selected: TipoMedidor, onSelect: (TipoMedidor) -> Unit) {
         var expanded by remember { mutableStateOf(false) }
-        Box {
-            OutlinedTextField(
-                value = selected.str,
-                onValueChange = {},
-                label = { Text("Tipo de Medidor") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth().clickable { expanded = true }
-            )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                TipoMedidor.values().forEach { tipo ->
-                    DropdownMenuItem(text = { Text(tipo.str) }, onClick = {
-                        onSelect(tipo)
-                        expanded = false
-                    })
+        Box(modifier = Modifier.fillMaxWidth()) {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    readOnly = true,
+                    value = selected.str,
+                    onValueChange = { },
+                    label = { Text("Tipo de Medidor") }
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    TipoMedidor.values().forEach { tipo ->
+                        DropdownMenuItem(
+                            text = { Text(tipo.str) },
+                            onClick = {
+                                onSelect(tipo)
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
         }

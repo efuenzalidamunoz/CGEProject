@@ -26,6 +26,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -382,6 +384,7 @@ class PantallaClientes {
         Spacer(modifier = Modifier.height(8.dp))
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SelectorEstadoCliente(
         selectedState: EstadoCliente,
@@ -389,17 +392,28 @@ class PantallaClientes {
     ) {
         var expanded by remember { mutableStateOf(false) }
         Text(text = "Estado:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = blue)
-        Box {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             OutlinedTextField(
                 value = selectedState.name,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Estado") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.height(60.dp).fillMaxWidth().clickable { expanded = true },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue)
             )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 EstadoCliente.values().forEach { estado ->
                     DropdownMenuItem(text = { Text(estado.name) }, onClick = {
                         onStateSelected(estado)
@@ -411,6 +425,7 @@ class PantallaClientes {
         Spacer(modifier = Modifier.height(8.dp))
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SelectorTipoTarifa(
         selectedTarifa: TipoTarifa,
@@ -418,17 +433,28 @@ class PantallaClientes {
     ) {
         var expanded by remember { mutableStateOf(false) }
         Text(text = "Tipo de Tarifa:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = blue)
-        Box {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             OutlinedTextField(
                 value = selectedTarifa.name,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Tipo de Tarifa") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.height(60.dp).fillMaxWidth().clickable { expanded = true },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue)
             )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 TipoTarifa.values().forEach { tarifa ->
                     DropdownMenuItem(text = { Text(tarifa.name) }, onClick = {
                         onTarifaSelected(tarifa)
