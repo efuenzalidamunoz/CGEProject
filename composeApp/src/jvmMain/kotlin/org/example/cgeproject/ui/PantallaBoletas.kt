@@ -212,7 +212,7 @@ class PantallaBoletas {
             val mesInt = mes.toIntOrNull()
             if (selectedMedidor != null && anioInt != null && mesInt != null) {
                 lecturasDisponibles = lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mesInt)
-                selectedLectura = null // Clear selected reading when the list changes
+                selectedLectura = null
                 if (lecturasDisponibles.isEmpty()) {
                     error = "No se encontraron lecturas para el medidor y período seleccionados."
                 } else {
