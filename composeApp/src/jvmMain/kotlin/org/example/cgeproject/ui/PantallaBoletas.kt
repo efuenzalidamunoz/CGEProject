@@ -25,7 +25,7 @@ import javax.swing.JFileChooser
 import java.text.SimpleDateFormat
 import java.util.Date
 
-// Enum para controlar la navegación entre pantallas
+
 private enum class PantallaBoleta {
     LISTA,
     FORMULARIO
@@ -70,7 +70,7 @@ class PantallaBoletas {
                         pantallaActual = PantallaBoleta.LISTA
                     },
                     medidorRepo = medidorRepo,
-                    lecturaRepo = lecturaRepo // Pasamos el lecturaRepo al composable
+                    lecturaRepo = lecturaRepo
                 )
             }
         }
@@ -116,7 +116,7 @@ class PantallaBoletas {
                         idCliente,
                         boletas,
                         onVerDetalle = { boletaParaDetalle = it },
-                        onEliminarBoleta = { boletaParaEliminar = it } // Pasar la función para eliminar
+                        onEliminarBoleta = { boletaParaEliminar = it }
                     )
                 }
             }
@@ -146,7 +146,7 @@ class PantallaBoletas {
                     Button(
                         onClick = {
                             boletaService.eliminarBoleta(boleta.getId())
-                            boletas = repo.listarPorCliente(idCliente) // Refrescar la lista
+                            boletas = repo.listarPorCliente(idCliente)
                             boletaParaEliminar = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
@@ -210,7 +210,7 @@ class PantallaBoletas {
             val mesInt = mes.toIntOrNull()
             if (selectedMedidor != null && anioInt != null && mesInt != null) {
                 lecturasDisponibles = lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mesInt)
-                selectedLectura = null // Clear selected reading when the list changes
+                selectedLectura = null
                 if (lecturasDisponibles.isEmpty()) {
                     error = "No se encontraron lecturas para el medidor y período seleccionados."
                 } else {
@@ -375,7 +375,6 @@ class PantallaBoletas {
         }
     }
 
-    // --- Composables del diseño original (Reutilizados y adaptados) ---
 
     @Composable
     private fun HeaderSection() {
