@@ -20,4 +20,9 @@ class LecturaRepoImpl(private val persist: PersistenciaDatos) : LecturaRepositor
             .filter { it.getIdMedidor() == idMedidor }
             .maxByOrNull { it.getCreatedAt().time }
     }
+
+    override fun eliminarLectura(id: String): Boolean {
+        return persist.eliminarLectura(id)
+    }
+
 }

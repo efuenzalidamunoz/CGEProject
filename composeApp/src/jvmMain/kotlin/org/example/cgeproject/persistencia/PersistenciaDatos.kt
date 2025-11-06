@@ -217,6 +217,16 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         return agregarLineaCSV(LECTURAS_KEY, linea)
     }
 
+    fun guardarTodasLasLecturas(lecturas: List<LecturaConsumo>): Boolean {
+        var allSaved = true
+        for (lectura in lecturas) {
+            if (!guardarLectura(lectura)) {
+                allSaved = false
+            }
+        }
+        return allSaved
+    }
+
     fun obtenerLecturas(): List<LecturaConsumo> {
         return leerCSV(LECTURAS_KEY)
             .drop(1)
@@ -290,10 +300,13 @@ class PersistenciaDatos(private val driver: StorageDriver) {
             }
     }
 
-    fun eliminarBoleta(id: String): Boolean {
+    fun eliminarBoleta(rut: String, anio: Int, mes: Int): Boolean {
         val lines = leerCSV(BOLETAS_KEY).drop(1).toMutableList()
         val inicialSize = lines.size
-        lines.removeIf { it.split(",").firstOrNull() == id }
+        lines.removeIf {
+            val p = it.split(",")
+            p.getOrElse(3) { "" } == rut && p.getOrElse(4) { "0" }.toInt() == anio && p.getOrElse(5) { "0" }.toInt() == mes
+        }
         if (lines.size == inicialSize) return false
         val headerAnd = mutableListOf(HEADER_BOLETAS)
         headerAnd.addAll(lines)

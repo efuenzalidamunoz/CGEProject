@@ -2,7 +2,9 @@ package org.example.cgeproject.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -34,6 +36,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +59,7 @@ import org.example.cgeproject.persistencia.PersistenciaDatos
 import org.example.cgeproject.persistencia.ClienteRepoImpl
 import org.example.cgeproject.persistencia.MedidorRepoImpl
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 
@@ -106,9 +111,72 @@ class PantallaLecturas {
         var anio by remember { mutableStateOf("") }
         var mes by remember { mutableStateOf("") }
 
+        var rutClienteBusqueda by remember { mutableStateOf("") }
+        var medidoresClienteBusqueda by remember { mutableStateOf<List<Medidor>>(emptyList()) }
+        var selectedMedidorBusqueda by remember { mutableStateOf<Medidor?>(null) }
+        var expandedMedidorDropdownBusqueda by remember { mutableStateOf(false) }
+
+
         var ultimaLectura by remember { mutableStateOf<LecturaConsumo?>(null) }
         var lecturasDelMes by remember { mutableStateOf<List<LecturaConsumo>>(emptyList()) }
         var error by remember { mutableStateOf<String?>(null) }
+
+        // Estado para el diálogo de confirmación de eliminación
+        var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
+        var lecturaToDelete by remember { mutableStateOf<String?>(null) }
+
+        // Efecto para cargar medidores cuando el RUT del cliente cambia en la búsqueda
+        LaunchedEffect(rutClienteBusqueda) {
+            if (rutClienteBusqueda.isNotBlank()) {
+                try {
+                    val cliente = clienteRepo.obtenerPorRut(rutClienteBusqueda)
+                    if (cliente != null) {
+                        medidoresClienteBusqueda = medidorRepo.listarPorCliente(rutClienteBusqueda)
+                        selectedMedidorBusqueda = medidoresClienteBusqueda.firstOrNull()
+                        error = null
+                    } else {
+                        medidoresClienteBusqueda = emptyList()
+                        selectedMedidorBusqueda = null
+                        error = "Cliente no encontrado."
+                    }
+                } catch (e: Exception) {
+                    medidoresClienteBusqueda = emptyList()
+                    selectedMedidorBusqueda = null
+                    error = e.message ?: "Error al buscar cliente o medidores."
+                }
+            } else {
+                medidoresClienteBusqueda = emptyList()
+                selectedMedidorBusqueda = null
+                error = null
+            }
+        }
+
+        // Función para realizar la búsqueda y actualizar los estados
+        val performSearch: () -> Unit = { ->
+            val anioInt = anio.toIntOrNull()
+            val mesInt = mes.toIntOrNull()
+            val medidorIdToSearch = selectedMedidorBusqueda?.getCodigo()
+
+            if (medidorIdToSearch != null && anioInt != null && mesInt != null) {
+                lecturasDelMes = repo.listarPorMedidorMes(medidorIdToSearch, anioInt, mesInt)
+                ultimaLectura = repo.ultimaLectura(medidorIdToSearch)
+
+                if (lecturasDelMes.isEmpty() && ultimaLectura == null) {
+                    error = "No existe un medidor con ese ID o no hay lecturas para el período."
+                } else {
+                    error = null
+                }
+
+            } else {
+                error = "Complete todos los campos correctamente para buscar."
+            }
+        }
+
+        // Callback para eliminar una lectura (ahora muestra el diálogo)
+        val onDeleteLectura: (String) -> Unit = { idLectura ->
+            lecturaToDelete = idLectura
+            showDeleteConfirmationDialog = true
+        }
 
         Scaffold(
             topBar = {
@@ -134,26 +202,16 @@ class PantallaLecturas {
             ) {
                 // Formulario de Búsqueda
                 SearchCard(
-                    idMedidor = idMedidor, onIdMedidorChange = { idMedidor = it },
+                    rutCliente = rutClienteBusqueda,
+                    onRutClienteChange = { rutClienteBusqueda = it },
+                    medidoresCliente = medidoresClienteBusqueda,
+                    selectedMedidor = selectedMedidorBusqueda,
+                    onSelectedMedidorChange = { selectedMedidorBusqueda = it },
+                    expandedMedidorDropdown = expandedMedidorDropdownBusqueda,
+                    onExpandedMedidorDropdownChange = { expandedMedidorDropdownBusqueda = it },
                     anio = anio, onAnioChange = { anio = it },
                     mes = mes, onMesChange = { mes = it },
-                    onSearch = {
-                        val anioInt = anio.toIntOrNull()
-                        val mesInt = mes.toIntOrNull()
-                        if (idMedidor.isNotBlank() && anioInt != null && mesInt != null) {
-                            lecturasDelMes = repo.listarPorMedidorMes(idMedidor, anioInt, mesInt)
-                            ultimaLectura = repo.ultimaLectura(idMedidor)
-
-                            if (lecturasDelMes.isEmpty() && ultimaLectura == null) {
-                                error = "No existe un medidor con ese ID"
-                            } else {
-                                error = null
-                            }
-
-                        } else {
-                            error = "Complete todos los campos correctamente."
-                        }
-                    },
+                    onSearch = performSearch,
                     searchError = error
                 )
 
@@ -165,8 +223,33 @@ class PantallaLecturas {
                 // Tabla de Resultados
                 if (lecturasDelMes.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    ResultsTable(lecturasDelMes)
+                    ResultsTable(lecturasDelMes, onDeleteLectura)
                 }
+            }
+
+            // Diálogo de confirmación de eliminación
+            if (showDeleteConfirmationDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirmationDialog = false },
+                    title = { Text("Confirmar Eliminación") },
+                    text = { Text("¿Estás seguro de que quieres eliminar esta lectura?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            lecturaToDelete?.let { id ->
+                                repo.eliminarLectura(id)
+                                performSearch() // Volver a cargar las lecturas después de eliminar
+                            }
+                            showDeleteConfirmationDialog = false
+                            lecturaToDelete = null
+                        }) { Text("Eliminar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            showDeleteConfirmationDialog = false
+                            lecturaToDelete = null
+                        }) { Text("Cancelar") }
+                    }
+                )
             }
         }
     }
@@ -319,12 +402,22 @@ class PantallaLecturas {
                                     error = "Todos los campos son obligatorios y deben ser válidos."
                                     return@Button
                                 }
-                                val now = Date()
+
+                                val calendar = Calendar.getInstance()
+                                calendar.set(Calendar.YEAR, anioInt)
+                                calendar.set(Calendar.MONTH, mesInt - 1) // Meses en Calendar son 0-indexados
+                                calendar.set(Calendar.DAY_OF_MONTH, 1) // Establecer al primer día del mes
+                                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                                calendar.set(Calendar.MINUTE, 0)
+                                calendar.set(Calendar.SECOND, 0)
+                                calendar.set(Calendar.MILLISECOND, 0)
+                                val lecturaDate = calendar.time
+
                                 onSave(
                                     LecturaConsumo(
                                         id = UUID.randomUUID().toString(),
-                                        createdAt = now,
-                                        updatedAt = now,
+                                        createdAt = lecturaDate,
+                                        updatedAt = lecturaDate,
                                         idMedidor = selectedMedidor!!.getCodigo(), // Usamos el medidor seleccionado
                                         anio = anioInt,
                                         mes = mesInt,
@@ -342,9 +435,13 @@ class PantallaLecturas {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SearchCard(
-        idMedidor: String, onIdMedidorChange: (String) -> Unit,
+        rutCliente: String, onRutClienteChange: (String) -> Unit,
+        medidoresCliente: List<Medidor>,
+        selectedMedidor: Medidor?, onSelectedMedidorChange: (Medidor?) -> Unit,
+        expandedMedidorDropdown: Boolean, onExpandedMedidorDropdownChange: (Boolean) -> Unit,
         anio: String, onAnioChange: (String) -> Unit,
         mes: String, onMesChange: (String) -> Unit,
         onSearch: () -> Unit,
@@ -370,11 +467,41 @@ class PantallaLecturas {
             ) {
                 Text("Buscar Lecturas", style = MaterialTheme.typography.titleLarge, color = blue)
                 OutlinedTextField(
-                    value = idMedidor,
-                    onValueChange = onIdMedidorChange,
-                    label = { Text("ID del Medidor") },
+                    value = rutCliente,
+                    onValueChange = onRutClienteChange,
+                    label = { Text("RUT Cliente") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                ExposedDropdownMenuBox(
+                    expanded = expandedMedidorDropdown,
+                    onExpandedChange = onExpandedMedidorDropdownChange,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Medidor") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedMedidorDropdown,
+                        onDismissRequest = { onExpandedMedidorDropdownChange(false) }
+                    ) {
+                        medidoresCliente.forEach { medidor ->
+                            DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                                onSelectedMedidorChange(medidor)
+                                onExpandedMedidorDropdownChange(false)
+                            })
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = anio,
@@ -393,7 +520,11 @@ class PantallaLecturas {
                 searchError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp))
                 }
-                Button(onClick = onSearch, enabled = idMedidor.isNotBlank(), modifier = Modifier.align(Alignment.End)) {
+                Button(
+                    onClick = onSearch,
+                    enabled = rutCliente.isNotBlank() && selectedMedidor != null,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
                     Text("Buscar")
                 }
             }
@@ -422,7 +553,7 @@ class PantallaLecturas {
     }
 
     @Composable
-    private fun ResultsTable(lecturas: List<LecturaConsumo>) {
+    private fun ResultsTable(lecturas: List<LecturaConsumo>, onDelete: (String) -> Unit) {
         Column {
             // Encabezado de la tabla
             Row(modifier = Modifier.fillMaxWidth().background(blue.copy(alpha = 0.1f)).padding(12.dp)) {
@@ -434,14 +565,40 @@ class PantallaLecturas {
                     color = blue,
                     textAlign = TextAlign.End
                 )
+                Text(
+                    "Acciones",
+                    modifier = Modifier.weight(0.8f),
+                    fontWeight = FontWeight.Bold,
+                    color = blue,
+                    textAlign = TextAlign.Center
+                )
             }
             HorizontalDivider()
             // Filas de la tabla
             LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                 items(lecturas.sortedByDescending { it.getCreatedAt() }) { lectura ->
-                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(formatDisplayDate(lectura.getCreatedAt()), modifier = Modifier.weight(1f))
-                        Text(lectura.getKwhLeidos().toString(), modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                        Text(
+                            lectura.getKwhLeidos().toString(),
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.End
+                        )
+                        Box(
+                            modifier = Modifier.weight(0.8f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Button(
+                                onClick = { onDelete(lectura.getId()) },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("Eliminar", fontSize = 12.sp)
+                            }
+                        }
                     }
                     HorizontalDivider(thickness = 0.5.dp)
                 }

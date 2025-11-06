@@ -6,4 +6,5 @@ interface BoletaRepositorio {
     fun guardar(b: Boleta): Boleta
     fun obtener(rut: String, anio: Int, mes: Int): Boleta?
     fun listarPorCliente(rut: String): List<Boleta>
+    fun eliminarBoleta(rut: String, anio: Int, mes: Int)
 }

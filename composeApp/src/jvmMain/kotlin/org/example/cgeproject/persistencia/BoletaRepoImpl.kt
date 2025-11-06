@@ -18,4 +18,7 @@ class BoletaRepoImpl(private val persist: PersistenciaDatos): BoletaRepositorio 
         return persist.obtenerBoletas().filter { it.getIdCliente() == rut }
     }
 
+    override fun eliminarBoleta(rut: String, anio: Int, mes: Int) {
+        persist.eliminarBoleta(rut, anio, mes)
+    }
 }
