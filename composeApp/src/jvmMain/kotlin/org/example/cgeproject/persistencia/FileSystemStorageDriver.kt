@@ -3,10 +3,6 @@ package org.example.cgeproject.persistencia
 import java.io.File
 import java.nio.file.Paths
 
-/**
- * Implementación JVM del StorageDriver que guarda en la carpeta "data" en la raíz del proyecto.
- * Ruta: <project-root>/data
- */
 class FileSystemStorageDriver : StorageDriver {
     private val projectRoot = System.getProperty("user.dir") ?: "."
     private val dataDir = Paths.get(projectRoot, "data").toFile()
@@ -17,6 +13,7 @@ class FileSystemStorageDriver : StorageDriver {
         }
     }
 
+    /** Almacena los datos asociados a una clave específica en el archivo CSV. **/
     override fun put(key: String, data: ByteArray): Boolean {
         return try {
             val file = File(dataDir, "$key.csv")
@@ -28,6 +25,7 @@ class FileSystemStorageDriver : StorageDriver {
         }
     }
 
+    /** Recupera los datos asociados a una clave específica. **/
     override fun get(key: String): ByteArray? {
         return try {
             val file = File(dataDir, "$key.csv")
@@ -39,6 +37,7 @@ class FileSystemStorageDriver : StorageDriver {
         }
     }
 
+    /** Devuelve una lista de las llaves que inician con un pefijo y terminan en .csv **/
     override fun keys(prefix: String): List<String> {
         return dataDir.listFiles()
             ?.filter { it.isFile && it.name.startsWith(prefix) && it.name.endsWith(".csv") }
@@ -46,6 +45,8 @@ class FileSystemStorageDriver : StorageDriver {
             ?: emptyList()
     }
 
+
+    /** Elimina un archivo del almacenamiento **/
     override fun remove(key: String): Boolean {
         return try {
             val file = File(dataDir, "$key.csv")
@@ -57,6 +58,5 @@ class FileSystemStorageDriver : StorageDriver {
         }
     }
 
-    // utilidad jvm-only
     fun getDataPath(): String = dataDir.absolutePath
 }

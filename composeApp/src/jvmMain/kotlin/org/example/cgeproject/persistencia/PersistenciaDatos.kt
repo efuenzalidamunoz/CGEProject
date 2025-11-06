@@ -49,13 +49,14 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         inicializar(BOLETAS_KEY, HEADER_BOLETAS)
     }
 
+    /** Crea el archivo CSV si es que no existe **/
     private fun inicializar(key: String, header: String) {
         if (driver.get(key) == null) {
             driver.put(key, (header + "\n").toByteArray(Charsets.UTF_8))
         }
     }
 
-    // ---------- util CSV ----------
+    /** Lee el contenido del .csv **/
     private fun leerCSV(key: String): List<String> {
         val bytes = driver.get(key) ?: return emptyList()
         return String(bytes, Charsets.UTF_8)
@@ -63,6 +64,7 @@ class PersistenciaDatos(private val driver: StorageDriver) {
             .filter { it.isNotBlank() }
     }
 
+    /** Ocupamos para escribir dentro del .csv */
     private fun escribirCSV(key: String, lineas: List<String>): Boolean {
         val contenido = lineas.joinToString("\n") + "\n"
         return driver.put(key, contenido.toByteArray(Charsets.UTF_8))
@@ -74,7 +76,7 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         return escribirCSV(key, lineas)
     }
 
-    // ---------- CLIENTES ----------
+    /** Guarda el cliente dentro del .csv **/
     fun guardarCliente(cliente: Cliente): Boolean {
         // Guardamos rut,nombre,email,direccionFacturacion,estado,tipoTarifa
         val estadoStr = cliente.getEstado().toString()
@@ -139,7 +141,7 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         return escribirCSV(CLIENTES_KEY, headerAnd)
     }
 
-    // ---------- MEDIDORES ----------
+    /** Guarda el medidor en el .csv **/
     fun guardarMedidor(m: Medidor): Boolean {
         // id,createdAt,updatedAt,codigo,direccionSuministro,activo,idCliente,tipo,potenciaMaxKw,factorPotencia
         val potencia = when (m) {
@@ -202,7 +204,6 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         return escribirCSV(MEDIDORES_KEY, headerAnd)
     }
 
-    // ---------- LECTURAS ----------
     fun guardarLectura(l: LecturaConsumo): Boolean {
         // id,createdAt,updatedAt,idMedidor,anio,mes,kwhLeidos
         val linea = listOf(
@@ -254,7 +255,7 @@ class PersistenciaDatos(private val driver: StorageDriver) {
         return escribirCSV(LECTURAS_KEY, headerAnd)
     }
 
-    // ---------- BOLETAS ----------
+    /** Guardamos las boletas dentro del csv **/
     fun guardarBoleta(b: Boleta): Boolean {
         // id,createdAt,updatedAt,idCliente,anio,mes,kwhTotal,detalle_subtotal,detalle_cargos,detalle_iva,detalle_total,estado
         val d = b.getDetalle()
