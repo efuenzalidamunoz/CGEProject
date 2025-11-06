@@ -31,11 +31,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,9 +48,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.LecturaConsumo
+import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.persistencia.FileSystemStorageDriver
 import org.example.cgeproject.persistencia.LecturaRepoImpl
 import org.example.cgeproject.persistencia.PersistenciaDatos
+import org.example.cgeproject.persistencia.ClienteRepoImpl
+import org.example.cgeproject.persistencia.MedidorRepoImpl
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.UUID
@@ -62,8 +69,10 @@ class PantallaLecturas {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
-    // --- Repositorio ---
+    // --- Repositorios ---
     private val repo = LecturaRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
+    private val clienteRepo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
+    private val medidorRepo = MedidorRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
     fun PantallaPrincipal() {
@@ -82,7 +91,9 @@ class PantallaLecturas {
                     onSave = { nuevaLectura ->
                         repo.registrar(nuevaLectura)
                         pantallaActual = PantallaLectura.LISTA
-                    }
+                    },
+                    clienteRepo = clienteRepo,
+                    medidorRepo = medidorRepo
                 )
             }
         }
@@ -160,16 +171,49 @@ class PantallaLecturas {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun FormularioLecturaContent(
         onNavigateBack: () -> Unit,
-        onSave: (LecturaConsumo) -> Unit
+        onSave: (LecturaConsumo) -> Unit,
+        clienteRepo: ClienteRepoImpl,
+        medidorRepo: MedidorRepoImpl
     ) {
-        var idMedidor by remember { mutableStateOf("") }
-        var anio by remember { mutableStateOf(Date().toInstant().atZone(java.time.ZoneId.systemDefault()).year.toString()) }
-        var mes by remember { mutableStateOf((Date().toInstant().atZone(java.time.ZoneId.systemDefault()).monthValue).toString()) }
+        var rutCliente by remember { mutableStateOf("") }
+        var medidoresCliente by remember { mutableStateOf<List<Medidor>>(emptyList()) }
+        var selectedMedidor by remember { mutableStateOf<Medidor?>(null) }
+        var expandedMedidorDropdown by remember { mutableStateOf(false) }
+
+        var anio by remember { mutableStateOf("") }
+        var mes by remember { mutableStateOf("") }
         var consumo by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
+
+        // Efecto para cargar medidores cuando el RUT del cliente cambia
+        LaunchedEffect(rutCliente) {
+            if (rutCliente.isNotBlank()) {
+                try {
+                    val cliente = clienteRepo.obtenerPorRut(rutCliente)
+                    if (cliente != null) {
+                        medidoresCliente = medidorRepo.listarPorCliente(rutCliente)
+                        selectedMedidor = medidoresCliente.firstOrNull()
+                        error = null
+                    } else {
+                        medidoresCliente = emptyList()
+                        selectedMedidor = null
+                        error = "Cliente no encontrado."
+                    }
+                } catch (e: Exception) {
+                    medidoresCliente = emptyList()
+                    selectedMedidor = null
+                    error = e.message ?: "Error al buscar cliente o medidores."
+                }
+            } else {
+                medidoresCliente = emptyList()
+                selectedMedidor = null
+                error = null
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -196,11 +240,44 @@ class PantallaLecturas {
                     Spacer(modifier = Modifier.height(24.dp))
 
                     OutlinedTextField(
-                        value = idMedidor,
-                        onValueChange = { idMedidor = it },
-                        label = { Text("ID Medidor") },
+                        value = rutCliente,
+                        onValueChange = { rutCliente = it },
+                        label = { Text("RUT Cliente") },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Selector de Medidor
+                    ExposedDropdownMenuBox(
+                        expanded = expandedMedidorDropdown,
+                        onExpandedChange = { expandedMedidorDropdown = !expandedMedidorDropdown },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Medidor") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandedMedidorDropdown,
+                            onDismissRequest = { expandedMedidorDropdown = false }
+                        ) {
+                            medidoresCliente.forEach { medidor ->
+                                DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                                    selectedMedidor = medidor
+                                    expandedMedidorDropdown = false
+                                })
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = anio,
@@ -238,8 +315,8 @@ class PantallaLecturas {
                                 val mesInt = mes.toIntOrNull()
                                 val consumoDouble = consumo.toDoubleOrNull()
 
-                                if (idMedidor.isBlank() || anioInt == null || mesInt == null || consumoDouble == null) {
-                                    error = "Datos inválidos. Revise los campos."
+                                if (rutCliente.isBlank() || selectedMedidor == null || anioInt == null || mesInt == null || consumoDouble == null) {
+                                    error = "Todos los campos son obligatorios y deben ser válidos."
                                     return@Button
                                 }
                                 val now = Date()
@@ -248,7 +325,7 @@ class PantallaLecturas {
                                         id = UUID.randomUUID().toString(),
                                         createdAt = now,
                                         updatedAt = now,
-                                        idMedidor = idMedidor,
+                                        idMedidor = selectedMedidor!!.getCodigo(), // Usamos el medidor seleccionado
                                         anio = anioInt,
                                         mes = mesInt,
                                         kwhLeidos = consumoDouble

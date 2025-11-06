@@ -14,12 +14,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Boleta
+import org.example.cgeproject.dominio.Medidor
+import org.example.cgeproject.dominio.LecturaConsumo
 import org.example.cgeproject.persistencia.*
 import org.example.cgeproject.servicios.BoletaService
 import org.example.cgeproject.servicios.PdfService
 import org.example.cgeproject.servicios.TarifaService
 import java.io.File
 import javax.swing.JFileChooser
+import java.text.SimpleDateFormat
+import java.util.Date
 
 // Enum para controlar la navegación entre pantallas
 private enum class PantallaBoleta {
@@ -34,13 +38,15 @@ class PantallaBoletas {
     // Se mantienen tus inicializaciones de servicios
     private val boletaService: BoletaService
     private val repo: BoletaRepoImpl
+    private val medidorRepo: MedidorRepoImpl
+    private val lecturaRepo: LecturaRepoImpl // Agregamos el repositorio de lecturas
 
     init {
         val persistencia = PersistenciaDatos(FileSystemStorageDriver())
         val clienteRepo = ClienteRepoImpl(persistencia)
-        val medidorRepo = MedidorRepoImpl(persistencia)
-        val lecturaRepo = LecturaRepoImpl(persistencia)
-        repo = BoletaRepoImpl(persistencia) // Se asigna al 'repo' de la clase
+        medidorRepo = MedidorRepoImpl(persistencia)
+        lecturaRepo = LecturaRepoImpl(persistencia) // Inicializamos lecturaRepo
+        repo = BoletaRepoImpl(persistencia)
         val tarifaService = TarifaService()
         val pdfService = PdfService()
         boletaService = BoletaService(clienteRepo, medidorRepo, lecturaRepo, repo, tarifaService, pdfService)
@@ -60,12 +66,12 @@ class PantallaBoletas {
             PantallaBoleta.FORMULARIO -> {
                 FormularioBoletaContent(
                     onNavigateBack = { pantallaActual = PantallaBoleta.LISTA },
-                    onSaveBoleta = { rut, anio, mes ->
-                        // Lógica para 'guardar(b: Boleta)'
-                        // El servicio emite y guarda la boleta
-                        boletaService.emitirBoletaMensual(rut, anio, mes)
+                    onSaveBoleta = { rut, codigoMedidor, anio, mes, kwhConsumido -> // Actualizamos la firma
+                        boletaService.emitirBoletaMensual(rut, codigoMedidor, anio, mes, kwhConsumido)
                         pantallaActual = PantallaBoleta.LISTA
-                    }
+                    },
+                    medidorRepo = medidorRepo,
+                    lecturaRepo = lecturaRepo // Pasamos el lecturaRepo al composable
                 )
             }
         }
@@ -99,7 +105,6 @@ class PantallaBoletas {
                     idCliente = idCliente,
                     onIdClienteChange = { idCliente = it },
                     onSearch = {
-                        // Lógica para 'listarPorCliente(rut: String)'
                         boletas = repo.listarPorCliente(idCliente)
                         busquedaRealizada = true
                     }
@@ -108,14 +113,12 @@ class PantallaBoletas {
                 if (busquedaRealizada) {
                     Spacer(modifier = Modifier.height(24.dp))
                     MostrarTablaBoletas(idCliente, boletas, onVerDetalle = {
-                        // Lógica para 'obtener(rut, anio, mes)' se activa aquí
                         boletaParaDetalle = it
                     })
                 }
             }
         }
 
-        // Diálogo para mostrar los detalles de la boleta
         boletaParaDetalle?.let {
             DetalleBoletaDialog(
                 boleta = it,
@@ -132,12 +135,68 @@ class PantallaBoletas {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun FormularioBoletaContent(onNavigateBack: () -> Unit, onSaveBoleta: (String, Int, Int) -> Unit) {
+    private fun FormularioBoletaContent(
+        onNavigateBack: () -> Unit,
+        onSaveBoleta: (String, String, Int, Int, Double) -> Unit, // Actualizamos la firma
+        medidorRepo: MedidorRepoImpl,
+        lecturaRepo: LecturaRepoImpl // Recibimos el lecturaRepo
+    ) {
         var rut by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf("") }
         var mes by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
+
+        var medidoresCliente by remember { mutableStateOf<List<Medidor>>(emptyList()) }
+        var selectedMedidor by remember { mutableStateOf<Medidor?>(null) }
+        var expandedMedidorDropdown by remember { mutableStateOf(false) }
+
+        var lecturasDisponibles by remember { mutableStateOf<List<LecturaConsumo>>(emptyList()) }
+        var selectedLectura by remember { mutableStateOf<LecturaConsumo?>(null) }
+        var expandedLecturaDropdown by remember { mutableStateOf(false) }
+
+        // Efecto para cargar medidores cuando el RUT cambia
+        LaunchedEffect(rut) {
+            if (rut.isNotBlank()) {
+                medidoresCliente = medidorRepo.listarPorCliente(rut)
+                selectedMedidor = medidoresCliente.firstOrNull()
+                if (medidoresCliente.isEmpty()) {
+                    error = "No se encontraron medidores para el RUT proporcionado."
+                } else {
+                    error = null
+                }
+            } else {
+                medidoresCliente = emptyList()
+                selectedMedidor = null
+                error = null
+            }
+            // Resetear lecturas cuando el medidor o RUT cambian
+            lecturasDisponibles = emptyList()
+            selectedLectura = null
+        }
+
+        // Efecto para cargar lecturas cuando el medidor, año o mes cambian
+        LaunchedEffect(selectedMedidor, anio, mes) {
+            val anioInt = anio.toIntOrNull()
+            val mesInt = mes.toIntOrNull()
+            if (selectedMedidor != null && anioInt != null && mesInt != null) {
+                lecturasDisponibles = lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mesInt)
+                selectedLectura = lecturasDisponibles.firstOrNull()
+                if (lecturasDisponibles.isEmpty()) {
+                    error = "No se encontraron lecturas para el medidor y período seleccionados."
+                } else {
+                    error = null
+                }
+            } else {
+                lecturasDisponibles = emptyList()
+                selectedLectura = null
+                // No limpiar el error si ya existe uno por falta de medidores o RUT
+                if (error == "No se encontraron lecturas para el medidor y período seleccionados.") {
+                    error = null
+                }
+            }
+        }
 
         Column(
             modifier = Modifier.fillMaxSize().background(backgroundColor).padding(16.dp),
@@ -155,6 +214,39 @@ class PantallaBoletas {
                         label = { Text("RUT Cliente") },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Selector de Medidor
+                    ExposedDropdownMenuBox(
+                        expanded = expandedMedidorDropdown,
+                        onExpandedChange = { expandedMedidorDropdown = !expandedMedidorDropdown },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Medidor") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandedMedidorDropdown,
+                            onDismissRequest = { expandedMedidorDropdown = false }
+                        ) {
+                            medidoresCliente.forEach { medidor ->
+                                DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                                    selectedMedidor = medidor
+                                    expandedMedidorDropdown = false
+                                })
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     OutlinedTextField(
                         value = anio,
                         onValueChange = { anio = it },
@@ -167,6 +259,36 @@ class PantallaBoletas {
                         label = { Text("Mes (1-12)") },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Selector de Lectura
+                    ExposedDropdownMenuBox(
+                        expanded = expandedLecturaDropdown,
+                        onExpandedChange = { expandedLecturaDropdown = !expandedLecturaDropdown },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = selectedLectura?.let { formatLecturaForDisplay(it) } ?: "Seleccione una lectura",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Lectura") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLecturaDropdown) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandedLecturaDropdown,
+                            onDismissRequest = { expandedLecturaDropdown = false }
+                        ) {
+                            lecturasDisponibles.forEach { lectura ->
+                                DropdownMenuItem(text = { Text(formatLecturaForDisplay(lectura)) }, onClick = {
+                                    selectedLectura = lectura
+                                    expandedLecturaDropdown = false
+                                })
+                            }
+                        }
+                    }
 
                     error?.let {
                         Text(
@@ -182,14 +304,32 @@ class PantallaBoletas {
                             onClick = {
                                 val anioInt = anio.toIntOrNull()
                                 val mesInt = mes.toIntOrNull()
-                                if (rut.isBlank() || anioInt == null || mesInt == null) {
-                                    error = "Todos los campos son obligatorios y deben ser válidos."
+
+                                if (rut.isBlank()) {
+                                    error = "El RUT del cliente es obligatorio."
                                     return@Button
                                 }
+                                if (selectedMedidor == null) {
+                                    error = "Debe seleccionar un medidor."
+                                    return@Button
+                                }
+                                if (anioInt == null) {
+                                    error = "El año es obligatorio y debe ser un número válido."
+                                    return@Button
+                                }
+                                if (mesInt == null) {
+                                    error = "El mes es obligatorio y debe ser un número válido."
+                                    return@Button
+                                }
+                                if (selectedLectura == null) {
+                                    error = "Debe seleccionar una lectura."
+                                    return@Button
+                                }
+
                                 try {
-                                    onSaveBoleta(rut, anioInt, mesInt)
+                                    onSaveBoleta(rut, selectedMedidor!!.getCodigo(), anioInt, mesInt, selectedLectura!!.getKwhLeidos())
                                 } catch (e: Exception) {
-                                    error = e.message ?: "Error al emitir la boleta."
+                                    error = e.message ?: "Error desconocido al emitir la boleta."
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = blue)
@@ -206,7 +346,6 @@ class PantallaBoletas {
 
     @Composable
     private fun HeaderSection() {
-        // (Tu código original)
         Box(modifier = Modifier.fillMaxWidth().height(400.dp).background(blue)) {
             Column(
                 modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(100.dp),
@@ -344,5 +483,10 @@ class PantallaBoletas {
                 }
             }
         )
+    }
+
+    private fun formatLecturaForDisplay(lectura: LecturaConsumo): String {
+        val formatter = SimpleDateFormat("dd/MM/yyyy")
+        return "Fecha: ${formatter.format(lectura.getCreatedAt())}, Consumo: ${"%.2f".format(lectura.getKwhLeidos())} kWh"
     }
 }
