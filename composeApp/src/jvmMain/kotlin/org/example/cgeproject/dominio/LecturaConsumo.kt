@@ -12,6 +12,7 @@ class LecturaConsumo(
     private val kwhLeidos: Double
 ): EntidadBase(id, createdAt, updatedAt) {
 
+    /** Getters **/
     fun getIdMedidor() : String = idMedidor
     fun getAnioLectura() : Int = anio
     fun getMesLectura() : Int = mes

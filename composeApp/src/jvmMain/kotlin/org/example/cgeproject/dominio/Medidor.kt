@@ -12,13 +12,14 @@ open class Medidor(
     private val idCliente: String
 ): EntidadBase(id, createdAt, updatedAt) {
 
-
+    /** Getters **/
     fun getCodigo(): String = codigo
     fun getDireccionSuministro(): String = direccionSuministro
     fun getActivo(): Boolean = activo
     fun getIdCliente(): String = idCliente
 
 
+    /** Obtiene el tipo del medidior **/
     open fun tipo(): String {
         return "Medidor Genérico"
     }

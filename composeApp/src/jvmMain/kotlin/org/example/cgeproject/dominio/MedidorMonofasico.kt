@@ -13,8 +13,10 @@ class MedidorMonofasico(
     private val potenciaMaxKw: Double
 ): Medidor(id, createdAt, updatedAt, codigo, direccionSuministro, activo, idCliente) {
 
+    /** Getters **/
     fun getPotenciaMaxKw() : Double = potenciaMaxKw
 
+    /** Tipo del medidor **/
     override fun tipo(): String {
         return "Monofásico"
     }

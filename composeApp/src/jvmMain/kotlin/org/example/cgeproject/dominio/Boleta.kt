@@ -15,6 +15,7 @@ class Boleta(
     private val estado: EstadoBoleta
 ): EntidadBase(id, createdAt, updatedAt), ExportablePDF {
 
+    /** Getters **/
     fun getIdCliente() : String = idCliente
     fun getAnio(): Int = anio
     fun getMes(): Int = mes
@@ -22,6 +23,7 @@ class Boleta(
     fun getDetalle() : TarifaDetalle = detalle
     fun getEstado() : EstadoBoleta = estado
 
+    /** Convierte la boleta en un objeto a una tabla pdf y la retorna **/
     override fun toPdfTable(): PdfTable {
         val headers = listOf("Descripción", "Monto")
         val rows = listOf(

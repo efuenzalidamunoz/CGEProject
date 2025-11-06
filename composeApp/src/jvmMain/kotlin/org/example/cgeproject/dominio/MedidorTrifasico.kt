@@ -14,9 +14,11 @@ class MedidorTrifasico(
     private val factorPotencia: Double,
 ): Medidor(id, createdAt, updatedAt, codigo, direccionSuministro, activo, idCliente) {
 
+    /** Getters **/
     fun getPotenciaMaxKw() : Double = potenciaMaxKw
     fun getFactorPotencia() : Double = factorPotencia
 
+    /** Tipo del medidor **/
     override fun tipo(): String {
         return "Trifásico"
     }
