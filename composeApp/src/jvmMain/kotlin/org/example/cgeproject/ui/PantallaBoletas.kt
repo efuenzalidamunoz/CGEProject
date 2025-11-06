@@ -35,17 +35,16 @@ class PantallaBoletas {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
-    // Se mantienen tus inicializaciones de servicios
     private val boletaService: BoletaService
     private val repo: BoletaRepoImpl
     private val medidorRepo: MedidorRepoImpl
-    private val lecturaRepo: LecturaRepoImpl // Agregamos el repositorio de lecturas
+    private val lecturaRepo: LecturaRepoImpl
 
     init {
         val persistencia = PersistenciaDatos(FileSystemStorageDriver())
         val clienteRepo = ClienteRepoImpl(persistencia)
         medidorRepo = MedidorRepoImpl(persistencia)
-        lecturaRepo = LecturaRepoImpl(persistencia) // Inicializamos lecturaRepo
+        lecturaRepo = LecturaRepoImpl(persistencia)
         repo = BoletaRepoImpl(persistencia)
         val tarifaService = TarifaService()
         val pdfService = PdfService()
@@ -66,7 +65,7 @@ class PantallaBoletas {
             PantallaBoleta.FORMULARIO -> {
                 FormularioBoletaContent(
                     onNavigateBack = { pantallaActual = PantallaBoleta.LISTA },
-                    onSaveBoleta = { rut, codigoMedidor, anio, mes, kwhConsumido -> // Actualizamos la firma
+                    onSaveBoleta = { rut, codigoMedidor, anio, mes, kwhConsumido ->
                         boletaService.emitirBoletaMensual(rut, codigoMedidor, anio, mes, kwhConsumido)
                         pantallaActual = PantallaBoleta.LISTA
                     },
@@ -82,7 +81,7 @@ class PantallaBoletas {
         var idCliente by remember { mutableStateOf("") }
         var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
         var boletaParaDetalle by remember { mutableStateOf<Boleta?>(null) }
-        var boletaParaEliminar by remember { mutableStateOf<Boleta?>(null) } // Nuevo estado para la boleta a eliminar
+        var boletaParaEliminar by remember { mutableStateOf<Boleta?>(null) }
         var busquedaRealizada by remember { mutableStateOf(false) }
 
         Scaffold(
@@ -168,9 +167,9 @@ class PantallaBoletas {
     @Composable
     private fun FormularioBoletaContent(
         onNavigateBack: () -> Unit,
-        onSaveBoleta: (String, String, Int, Int, Double) -> Unit, // Actualizamos la firma
+        onSaveBoleta: (String, String, Int, Int, Double) -> Unit,
         medidorRepo: MedidorRepoImpl,
-        lecturaRepo: LecturaRepoImpl // Recibimos el lecturaRepo
+        lecturaRepo: LecturaRepoImpl
     ) {
         var rut by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf("") }
@@ -433,7 +432,7 @@ class PantallaBoletas {
         idCliente: String,
         boletas: List<Boleta>,
         onVerDetalle: (Boleta) -> Unit,
-        onEliminarBoleta: (Boleta) -> Unit // Nueva función para eliminar
+        onEliminarBoleta: (Boleta) -> Unit
     ) {
         ElevatedCard(
             modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
@@ -452,7 +451,7 @@ class PantallaBoletas {
                     HeaderTabla("Fecha", Modifier.weight(1f))
                     HeaderTabla("Consumo (kWh)", Modifier.weight(1f))
                     HeaderTabla("Total a Pagar", Modifier.weight(1f))
-                    HeaderTabla("Acciones", Modifier.weight(1.5f)) // Ajustar peso para el nuevo botón
+                    HeaderTabla("Acciones", Modifier.weight(1.5f))
                 }
                 HorizontalDivider()
                 if (boletas.isEmpty()) {
@@ -503,6 +502,7 @@ class PantallaBoletas {
         }
     }
 
+    /** Ventana de detalle de boleta */
     @Composable
     private fun DetalleBoletaDialog(boleta: Boleta, onDismiss: () -> Unit, onGeneratePdf: () -> Unit) {
         AlertDialog(

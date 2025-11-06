@@ -69,6 +69,9 @@ class PantallaMedidores {
 
     private val repo = MedidorRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
+    /** Con las funciones siguientes es posible mostrar toda la información
+     * asociada a los medidores
+     */
     @Composable
     fun PantallaPrincipal() {
         var pantallaActual by remember { mutableStateOf(PantallaMedidor.LISTA) }

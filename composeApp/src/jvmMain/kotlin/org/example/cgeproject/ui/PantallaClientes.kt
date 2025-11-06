@@ -64,7 +64,6 @@ class PantallaClientes {
     private val blue = Color(0xFF001689)
     private val backgroundColor = Color(0xFFF1F5FA)
 
-    // --- Repositorio ---
     private val repo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     @Composable
@@ -111,6 +110,7 @@ class PantallaClientes {
         }
     }
 
+    /** Gestiona los clientes **/
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun GestionClientesContent(

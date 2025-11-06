@@ -125,7 +125,6 @@ class PantallaLecturas {
         var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
         var lecturaToDelete by remember { mutableStateOf<String?>(null) }
 
-        // Efecto para cargar medidores cuando el RUT del cliente cambia en la búsqueda
         LaunchedEffect(rutClienteBusqueda) {
             if (rutClienteBusqueda.isNotBlank()) {
                 try {
@@ -172,7 +171,7 @@ class PantallaLecturas {
             }
         }
 
-        // Callback para eliminar una lectura (ahora muestra el diálogo)
+        // Callback para eliminar una lectura
         val onDeleteLectura: (String) -> Unit = { idLectura ->
             lecturaToDelete = idLectura
             showDeleteConfirmationDialog = true
@@ -405,8 +404,8 @@ class PantallaLecturas {
 
                                 val calendar = Calendar.getInstance()
                                 calendar.set(Calendar.YEAR, anioInt)
-                                calendar.set(Calendar.MONTH, mesInt - 1) // Meses en Calendar son 0-indexados
-                                calendar.set(Calendar.DAY_OF_MONTH, 1) // Establecer al primer día del mes
+                                calendar.set(Calendar.MONTH, mesInt - 1)
+                                calendar.set(Calendar.DAY_OF_MONTH, 1)
                                 calendar.set(Calendar.HOUR_OF_DAY, 0)
                                 calendar.set(Calendar.MINUTE, 0)
                                 calendar.set(Calendar.SECOND, 0)
@@ -418,7 +417,7 @@ class PantallaLecturas {
                                         id = UUID.randomUUID().toString(),
                                         createdAt = lecturaDate,
                                         updatedAt = lecturaDate,
-                                        idMedidor = selectedMedidor!!.getCodigo(), // Usamos el medidor seleccionado
+                                        idMedidor = selectedMedidor!!.getCodigo(),
                                         anio = anioInt,
                                         mes = mesInt,
                                         kwhLeidos = consumoDouble
