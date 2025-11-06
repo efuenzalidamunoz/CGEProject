@@ -22,7 +22,7 @@ class BoletaRepoImpl(private val persist: PersistenciaDatos): BoletaRepositorio 
     }
 
     /** Se eliminan las boletas **/
-    override fun eliminarBoleta(rut: String, anio: Int, mes: Int) {
-        persist.eliminarBoleta(rut, anio, mes)
+    override fun eliminarBoleta(id: String) {
+        persist.eliminarBoleta(id)
     }
 }

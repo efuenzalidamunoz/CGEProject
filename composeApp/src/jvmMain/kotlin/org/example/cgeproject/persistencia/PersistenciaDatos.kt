@@ -300,12 +300,12 @@ class PersistenciaDatos(private val driver: StorageDriver) {
             }
     }
 
-    fun eliminarBoleta(rut: String, anio: Int, mes: Int): Boolean {
+    fun eliminarBoleta(id: String): Boolean {
         val lines = leerCSV(BOLETAS_KEY).drop(1).toMutableList()
         val inicialSize = lines.size
         lines.removeIf {
             val p = it.split(",")
-            p.getOrElse(3) { "" } == rut && p.getOrElse(4) { "0" }.toInt() == anio && p.getOrElse(5) { "0" }.toInt() == mes
+            p.getOrElse(0) { "" } == id
         }
         if (lines.size == inicialSize) return false
         val headerAnd = mutableListOf(HEADER_BOLETAS)

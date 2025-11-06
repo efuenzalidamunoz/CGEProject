@@ -43,8 +43,8 @@ class BoletaService(
         return boletas.guardar(boleta)
     }
 
-    fun eliminarBoleta(rut: String, anio: Int, mes: Int) {
-        boletas.eliminarBoleta(rut, anio, mes)
+    fun eliminarBoleta(id: String) {
+        boletas.eliminarBoleta(id)
     }
 
     // La función calcularKwhClienteMes ha sido eliminada ya que la UI ahora proporcionará el consumo directamente.

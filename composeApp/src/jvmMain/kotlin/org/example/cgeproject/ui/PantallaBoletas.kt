@@ -82,6 +82,7 @@ class PantallaBoletas {
         var idCliente by remember { mutableStateOf("") }
         var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
         var boletaParaDetalle by remember { mutableStateOf<Boleta?>(null) }
+        var boletaParaEliminar by remember { mutableStateOf<Boleta?>(null) } // Nuevo estado para la boleta a eliminar
         var busquedaRealizada by remember { mutableStateOf(false) }
 
         Scaffold(
@@ -112,9 +113,12 @@ class PantallaBoletas {
 
                 if (busquedaRealizada) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    MostrarTablaBoletas(idCliente, boletas, onVerDetalle = {
-                        boletaParaDetalle = it
-                    })
+                    MostrarTablaBoletas(
+                        idCliente,
+                        boletas,
+                        onVerDetalle = { boletaParaDetalle = it },
+                        onEliminarBoleta = { boletaParaEliminar = it } // Pasar la función para eliminar
+                    )
                 }
             }
         }
@@ -129,6 +133,31 @@ class PantallaBoletas {
                     fileChooser.selectedFile = File("boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf")
                     if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
                         fileChooser.selectedFile.writeBytes(pdfBytes)
+                    }
+                }
+            )
+        }
+
+        boletaParaEliminar?.let { boleta ->
+            AlertDialog(
+                onDismissRequest = { boletaParaEliminar = null },
+                title = { Text("Confirmar Eliminación") },
+                text = { Text("¿Estás seguro de que deseas eliminar la boleta de ${boleta.getIdCliente()} para ${boleta.getMes()}/${boleta.getAnio()}?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            boletaService.eliminarBoleta(boleta.getId())
+                            boletas = repo.listarPorCliente(idCliente) // Refrescar la lista
+                            boletaParaEliminar = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    ) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { boletaParaEliminar = null }) {
+                        Text("Cancelar")
                     }
                 }
             )
@@ -182,7 +211,7 @@ class PantallaBoletas {
             val mesInt = mes.toIntOrNull()
             if (selectedMedidor != null && anioInt != null && mesInt != null) {
                 lecturasDisponibles = lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mesInt)
-                selectedLectura = lecturasDisponibles.firstOrNull()
+                selectedLectura = null // Clear selected reading when the list changes
                 if (lecturasDisponibles.isEmpty()) {
                     error = "No se encontraron lecturas para el medidor y período seleccionados."
                 } else {
@@ -394,7 +423,12 @@ class PantallaBoletas {
     }
 
     @Composable
-    private fun MostrarTablaBoletas(idCliente: String, boletas: List<Boleta>, onVerDetalle: (Boleta) -> Unit) {
+    private fun MostrarTablaBoletas(
+        idCliente: String,
+        boletas: List<Boleta>,
+        onVerDetalle: (Boleta) -> Unit,
+        onEliminarBoleta: (Boleta) -> Unit // Nueva función para eliminar
+    ) {
         ElevatedCard(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp).fillMaxWidth(0.7f)) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
@@ -407,7 +441,7 @@ class PantallaBoletas {
                     HeaderTabla("Fecha", Modifier.weight(1f))
                     HeaderTabla("Consumo (kWh)", Modifier.weight(1f))
                     HeaderTabla("Total a Pagar", Modifier.weight(1f))
-                    HeaderTabla("Acciones", Modifier.weight(1f))
+                    HeaderTabla("Acciones", Modifier.weight(1.5f)) // Ajustar peso para el nuevo botón
                 }
                 HorizontalDivider()
                 if (boletas.isEmpty()) {
@@ -417,7 +451,7 @@ class PantallaBoletas {
                     )
                 } else {
                     boletas.forEach { boleta ->
-                        FilasTabla(boleta, onVerDetalle)
+                        FilasTabla(boleta, onVerDetalle, onEliminarBoleta) // Pasar la función a FilasTabla
                         HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
                     }
                 }
@@ -431,7 +465,7 @@ class PantallaBoletas {
     }
 
     @Composable
-    private fun FilasTabla(boleta: Boleta, onVerDetalle: (Boleta) -> Unit) {
+    private fun FilasTabla(boleta: Boleta, onVerDetalle: (Boleta) -> Unit, onEliminarBoleta: (Boleta) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("${boleta.getMes()}/${boleta.getAnio()}", modifier = Modifier.weight(1f))
             Text("%.2f".format(boleta.getKwhTotal()), modifier = Modifier.weight(1f))
@@ -440,12 +474,20 @@ class PantallaBoletas {
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
-            Button(
-                onClick = { onVerDetalle(boleta) },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = blue)
-            ) {
-                Text("Ver Detalle")
+            Row(modifier = Modifier.weight(1.5f), horizontalArrangement = Arrangement.SpaceAround) {
+                Button(
+                    onClick = { onVerDetalle(boleta) },
+                    colors = ButtonDefaults.buttonColors(containerColor = blue)
+                ) {
+                    Text("Ver Detalle")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = { onEliminarBoleta(boleta) }, // Botón de eliminar
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Eliminar")
+                }
             }
         }
     }
