@@ -17,11 +17,16 @@ class BoletaService(
     private val pdf: PdfService
 ) {
 
-    fun emitirBoletaMensual(rutCliente: String, mes: Int, anio: Int): Boleta {
+    fun emitirBoletaMensual(rutCliente: String, codigoMedidor: String, mes: Int, anio: Int, kwhConsumido: Double): Boleta {
         val cliente = clientes.obtenerPorRut(rutCliente) ?: throw Exception("Cliente no encontrado")
-        val consumoKwh = calcularKwhClienteMes(rutCliente, mes, anio)
+
+        // Verificación: No se emite una boleta si no hay consumo o lecturas para el período.
+        if (kwhConsumido <= 0.0) {
+            throw Exception("El consumo de kWh debe ser mayor a cero para emitir una boleta.")
+        }
+
         val tarifa = tarifas.tarifaPara(cliente)
-        val detalleTarifa = tarifa.calcular(consumoKwh)
+        val detalleTarifa = tarifa.calcular(kwhConsumido)
 
         val boleta = Boleta(
             id = "B-" + System.currentTimeMillis(),
@@ -30,9 +35,9 @@ class BoletaService(
             idCliente = cliente.getRut(),
             anio = anio,
             mes = mes,
-            kwhTotal = consumoKwh,
+            kwhTotal = kwhConsumido,
             detalle = detalleTarifa,
-            estado = EstadoBoleta.PENDIENTE
+            estado = EstadoBoleta.EMITIDA
         )
 
         return boletas.guardar(boleta)
@@ -42,22 +47,7 @@ class BoletaService(
         boletas.eliminarBoleta(rut, anio, mes)
     }
 
-    fun calcularKwhClienteMes(rutCliente: String, mes: Int, anio: Int): Double {
-        val cliente = clientes.obtenerPorRut(rutCliente) ?: throw Exception("Cliente no encontrado")
-        val medidoresCliente = medidores.listarPorCliente(cliente.getRut())
-        var consumoTotal = 0.0
-
-        for (medidor in medidoresCliente) {
-            val lecturasMes = lecturas.listarPorMedidorMes(medidor.getCodigo(), anio, mes)
-            if (lecturasMes.isNotEmpty()) {
-                val primeraLectura = lecturasMes.first().getKwhLeidos()
-                val ultimaLectura = lecturasMes.last().getKwhLeidos()
-                consumoTotal += ultimaLectura - primeraLectura
-            }
-        }
-
-        return consumoTotal
-    }
+    // La función calcularKwhClienteMes ha sido eliminada ya que la UI ahora proporcionará el consumo directamente.
 
     fun exportarPdfClienteMes(rutCliente: String, mes: Int, anio: Int): ByteArray {
         val boleta = boletas.obtener(rutCliente, anio, mes) ?: throw Exception("Boleta no encontrada")
