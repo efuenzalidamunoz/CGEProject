@@ -28,8 +28,9 @@ class PdfService() {
         val pdf = PdfDocument(writer)
         val document = Document(pdf)
 
-        document.setMargins(50f, 50f, 50f, 50f) // Márgenes para el documento
+        document.setMargins(50f, 50f, 50f, 50f)
 
+        /** Este es el formato del PDF **/
         try {
             for (boleta in boletas) {
                 val cliente = clientes[boleta.getIdCliente()] ?: throw Exception("Cliente no encontrado para la boleta")
@@ -59,7 +60,7 @@ class PdfService() {
                 document.add(Paragraph("Número de Cliente: ${cliente.getRut()}"))
                 document.add(Paragraph("Tipo de Tarifa: ${cliente.getTipoTarifa()}"))
                 document.add(Paragraph("Estado: ${cliente.getEstado()}"))
-                document.add(Paragraph("").setMarginBottom(20f)) // Espacio
+                document.add(Paragraph("").setMarginBottom(20f))
 
                 // Información de la boleta
                 document.add(
@@ -134,7 +135,7 @@ class PdfService() {
                 )
 
                 if (boletas.indexOf(boleta) < boletas.size - 1) {
-                    document.add(Paragraph("").setMarginBottom(50f)) // Espacio entre boletas si hay varias
+                    document.add(Paragraph("").setMarginBottom(50f))
                     document.add(Paragraph("--- Nueva Boleta ---").setTextAlignment(TextAlignment.CENTER).setFontColor(DeviceRgb(150,150,150)).setMarginBottom(50f))
                 }
             }

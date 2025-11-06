@@ -47,8 +47,8 @@ class BoletaService(
         boletas.eliminarBoleta(id)
     }
 
-    // La función calcularKwhClienteMes ha sido eliminada ya que la UI ahora proporcionará el consumo directamente.
 
+    /** Se exporta el PDF con los clientes en el mes especifico de la boleta */
     fun exportarPdfClienteMes(rutCliente: String, mes: Int, anio: Int): ByteArray {
         val boleta = boletas.obtener(rutCliente, anio, mes) ?: throw Exception("Boleta no encontrada")
         val cliente = clientes.obtenerPorRut(rutCliente) ?: throw Exception("Cliente no encontrado")

@@ -7,10 +7,6 @@ import org.example.cgeproject.dominio.TarifaResidencial
 import org.example.cgeproject.dominio.TipoTarifa
 
 class TarifaService() {
-    /**
-     * Devuelve la tarifa aplicable para un cliente.
-     * Determina la tarifa correcta según el cliente (residencial, comercial, etc.)
-     */
     fun tarifaPara(cliente: Cliente): Tarifa {
         return when (cliente.getTipoTarifa()) {
             TipoTarifa.RESIDENCIAL -> {
