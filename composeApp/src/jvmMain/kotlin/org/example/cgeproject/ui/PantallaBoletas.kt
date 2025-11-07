@@ -14,16 +14,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Boleta
-import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.dominio.LecturaConsumo
+import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.persistencia.*
 import org.example.cgeproject.servicios.BoletaService
 import org.example.cgeproject.servicios.PdfService
 import org.example.cgeproject.servicios.TarifaService
 import java.io.File
-import javax.swing.JFileChooser
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.*
+import javax.swing.JFileChooser
 
 // Enum para controlar la navegación entre pantallas
 private enum class PantallaBoleta {
@@ -39,10 +39,11 @@ class PantallaBoletas {
     private val repo: BoletaRepoImpl
     private val medidorRepo: MedidorRepoImpl
     private val lecturaRepo: LecturaRepoImpl
+    private val clienteRepo: ClienteRepoImpl
 
     init {
         val persistencia = PersistenciaDatos(FileSystemStorageDriver())
-        val clienteRepo = ClienteRepoImpl(persistencia)
+        clienteRepo = ClienteRepoImpl(persistencia)
         medidorRepo = MedidorRepoImpl(persistencia)
         lecturaRepo = LecturaRepoImpl(persistencia)
         repo = BoletaRepoImpl(persistencia)
@@ -77,13 +78,14 @@ class PantallaBoletas {
     }
 
     @Composable
-    /** Enlosta en una tabla todo el contenido de las boletas */
+    /** Enlista en una tabla todo el contenido de las boletas */
     private fun ListarBoletasContent(onNavigateToForm: () -> Unit) {
         var idCliente by remember { mutableStateOf("") }
         var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
         var boletaParaDetalle by remember { mutableStateOf<Boleta?>(null) }
         var boletaParaEliminar by remember { mutableStateOf<Boleta?>(null) }
         var busquedaRealizada by remember { mutableStateOf(false) }
+        var errorBusqueda by remember { mutableStateOf<String?>(null) }
 
         Scaffold(
             floatingActionButton = {
@@ -104,21 +106,46 @@ class PantallaBoletas {
                 Spacer(modifier = Modifier.height(32.dp))
                 BodyBusqueda(
                     idCliente = idCliente,
-                    onIdClienteChange = { idCliente = it },
+                    onIdClienteChange = {
+                        idCliente = it
+                        busquedaRealizada = false
+                        errorBusqueda = null
+                    },
                     onSearch = {
-                        boletas = repo.listarPorCliente(idCliente)
                         busquedaRealizada = true
+                        if (clienteRepo.obtenerPorRut(idCliente) == null) {
+                            errorBusqueda = "No se encontró un cliente con el RUT proporcionado."
+                            boletas = emptyList()
+                        } else {
+                            errorBusqueda = null
+                            boletas = repo.listarPorCliente(idCliente)
+                        }
                     }
                 )
 
                 if (busquedaRealizada) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    MostrarTablaBoletas(
-                        idCliente,
-                        boletas,
-                        onVerDetalle = { boletaParaDetalle = it },
-                        onEliminarBoleta = { boletaParaEliminar = it } // Pasar la función para eliminar
-                    )
+                    if (errorBusqueda != null) {
+                        ElevatedCard(
+                            modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+                        ) {
+                            Text(
+                                text = errorBusqueda!!,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally)
+                            )
+                        }
+                    } else {
+                        MostrarTablaBoletas(
+                            idCliente,
+                            boletas,
+                            onVerDetalle = { boletaParaDetalle = it },
+                            onEliminarBoleta = { boletaParaEliminar = it }
+                        )
+                    }
                 }
             }
         }
@@ -175,7 +202,6 @@ class PantallaBoletas {
     ) {
         var rut by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf("") }
-        var mes by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
 
         var medidoresCliente by remember { mutableStateOf<List<Medidor>>(emptyList()) }
@@ -190,7 +216,7 @@ class PantallaBoletas {
         LaunchedEffect(rut) {
             if (rut.isNotBlank()) {
                 medidoresCliente = medidorRepo.listarPorCliente(rut)
-                selectedMedidor = medidoresCliente.firstOrNull()
+                selectedMedidor = null // No pre-seleccionar
                 if (medidoresCliente.isEmpty()) {
                     error = "No se encontraron medidores para el RUT proporcionado."
                 } else {
@@ -206,15 +232,19 @@ class PantallaBoletas {
             selectedLectura = null
         }
 
-        // Efecto para cargar lecturas cuando el medidor, año o mes cambian
-        LaunchedEffect(selectedMedidor, anio, mes) {
+        // Efecto para cargar lecturas cuando el medidor o año cambian
+        LaunchedEffect(selectedMedidor, anio) {
             val anioInt = anio.toIntOrNull()
-            val mesInt = mes.toIntOrNull()
-            if (selectedMedidor != null && anioInt != null && mesInt != null) {
-                lecturasDisponibles = lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mesInt)
-                selectedLectura = null
+            if (selectedMedidor != null && anioInt != null) {
+                // Iterar por todos los meses para obtener las lecturas del año
+                val lecturasDelAnio = mutableListOf<LecturaConsumo>()
+                (1..12).forEach { mes ->
+                    lecturasDelAnio.addAll(lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mes))
+                }
+                lecturasDisponibles = lecturasDelAnio.sortedBy { it.getCreatedAt() }
+                selectedLectura = null // No pre-seleccionar
                 if (lecturasDisponibles.isEmpty()) {
-                    error = "No se encontraron lecturas para el medidor y período seleccionados."
+                    error = "No se encontraron lecturas para el medidor y año seleccionados."
                 } else {
                     error = null
                 }
@@ -222,7 +252,7 @@ class PantallaBoletas {
                 lecturasDisponibles = emptyList()
                 selectedLectura = null
                 // No limpiar el error si ya existe uno por falta de medidores o RUT
-                if (error == "No se encontraron lecturas para el medidor y período seleccionados.") {
+                if (error == "No se encontraron lecturas para el medidor y año seleccionados.") {
                     error = null
                 }
             }
@@ -247,6 +277,7 @@ class PantallaBoletas {
                         value = rut,
                         onValueChange = { rut = it },
                         label = { Text("RUT Cliente") },
+                        placeholder = { Text("Ejemplo: 12345678-9") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -259,7 +290,7 @@ class PantallaBoletas {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                            value = selectedMedidor?.let { "Código: ${it.getCodigo()} - Dirección: ${it.getDireccionSuministro()}" } ?: "Seleccione un medidor",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Medidor") },
@@ -272,7 +303,7 @@ class PantallaBoletas {
                             onDismissRequest = { expandedMedidorDropdown = false }
                         ) {
                             medidoresCliente.forEach { medidor ->
-                                DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                                DropdownMenuItem(text = { Text("Código: ${medidor.getCodigo()} - Dirección: ${medidor.getDireccionSuministro()}") }, onClick = {
                                     selectedMedidor = medidor
                                     expandedMedidorDropdown = false
                                 })
@@ -286,12 +317,6 @@ class PantallaBoletas {
                         value = anio,
                         onValueChange = { anio = it },
                         label = { Text("Año (YYYY)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = mes,
-                        onValueChange = { mes = it },
-                        label = { Text("Mes (1-12)") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -338,7 +363,6 @@ class PantallaBoletas {
                         Button(
                             onClick = {
                                 val anioInt = anio.toIntOrNull()
-                                val mesInt = mes.toIntOrNull()
 
                                 if (rut.isBlank()) {
                                     error = "El RUT del cliente es obligatorio."
@@ -352,17 +376,29 @@ class PantallaBoletas {
                                     error = "El año es obligatorio y debe ser un número válido."
                                     return@Button
                                 }
-                                if (mesInt == null) {
-                                    error = "El mes es obligatorio y debe ser un número válido."
-                                    return@Button
-                                }
                                 if (selectedLectura == null) {
                                     error = "Debe seleccionar una lectura."
                                     return@Button
                                 }
 
+                                val cal = Calendar.getInstance()
+                                cal.time = selectedLectura!!.getCreatedAt()
+                                val mesDeLectura = cal.get(Calendar.MONTH) + 1
+                                val anioDeLectura = cal.get(Calendar.YEAR)
+
+                                if (anioDeLectura != anioInt) {
+                                    error = "El año de la lectura ($anioDeLectura) no coincide con el año ingresado ($anioInt)."
+                                    return@Button
+                                }
+
                                 try {
-                                    onSaveBoleta(rut, selectedMedidor!!.getCodigo(), anioInt, mesInt, selectedLectura!!.getKwhLeidos())
+                                    onSaveBoleta(
+                                        rut,
+                                        selectedMedidor!!.getCodigo(),
+                                        anioDeLectura,
+                                        mesDeLectura,
+                                        selectedLectura!!.getKwhLeidos()
+                                    )
                                 } catch (e: Exception) {
                                     error = e.message ?: "Error desconocido al emitir la boleta."
                                 }
@@ -418,7 +454,8 @@ class PantallaBoletas {
                 OutlinedTextField(
                     value = idCliente,
                     onValueChange = onIdClienteChange,
-                    label = { Text("Ingresar el número de cliente") },
+                    label = { Text("RUT Cliente") },
+                    placeholder = { Text("Ejemplo: 12345678-9") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))

@@ -61,7 +61,6 @@ import org.example.cgeproject.persistencia.MedidorRepoImpl
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
-import java.util.UUID
 
 
 // --- Enum para Navegación ---
@@ -110,9 +109,8 @@ class PantallaLecturas {
     @Composable
     /** Esta funcion muestra la tabla con las lecturas de un medidor asociado **/
     private fun GestionLecturasContent(onNavigateToForm: () -> Unit) {
-        var idMedidor by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf("") }
-        var mes by remember { mutableStateOf("") }
+        var mes by remember { mutableStateOf<String?>(null) }
 
         var rutClienteBusqueda by remember { mutableStateOf("") }
         var medidoresClienteBusqueda by remember { mutableStateOf<List<Medidor>>(emptyList()) }
@@ -134,7 +132,7 @@ class PantallaLecturas {
                     val cliente = clienteRepo.obtenerPorRut(rutClienteBusqueda)
                     if (cliente != null) {
                         medidoresClienteBusqueda = medidorRepo.listarPorCliente(rutClienteBusqueda)
-                        selectedMedidorBusqueda = medidoresClienteBusqueda.firstOrNull()
+                        selectedMedidorBusqueda = null // No pre-seleccionar
                         error = null
                     } else {
                         medidoresClienteBusqueda = emptyList()
@@ -156,7 +154,7 @@ class PantallaLecturas {
         // Función para realizar la búsqueda y actualizar los estados
         val performSearch: () -> Unit = { ->
             val anioInt = anio.toIntOrNull()
-            val mesInt = mes.toIntOrNull()
+            val mesInt = mes?.toIntOrNull()
             val medidorIdToSearch = selectedMedidorBusqueda?.getCodigo()
 
             if (medidorIdToSearch != null && anioInt != null && mesInt != null) {
@@ -273,7 +271,9 @@ class PantallaLecturas {
         var expandedMedidorDropdown by remember { mutableStateOf(false) }
 
         var anio by remember { mutableStateOf("") }
-        var mes by remember { mutableStateOf("") }
+        val meses = listOf("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
+        var selectedMes by remember { mutableStateOf<String?>(null) }
+        var expandedMesDropdown by remember { mutableStateOf(false) }
         var consumo by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
 
@@ -284,7 +284,7 @@ class PantallaLecturas {
                     val cliente = clienteRepo.obtenerPorRut(rutCliente)
                     if (cliente != null) {
                         medidoresCliente = medidorRepo.listarPorCliente(rutCliente)
-                        selectedMedidor = medidoresCliente.firstOrNull()
+                        selectedMedidor = null // No pre-seleccionar
                         error = null
                     } else {
                         medidoresCliente = emptyList()
@@ -331,6 +331,7 @@ class PantallaLecturas {
                         value = rutCliente,
                         onValueChange = { rutCliente = it },
                         label = { Text("RUT Cliente") },
+                        placeholder = { Text("Ejemplo: 12345678-9") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -343,7 +344,7 @@ class PantallaLecturas {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                            value = selectedMedidor?.let { "Código: ${it.getCodigo()} - Dirección: ${it.getDireccionSuministro()}" } ?: "Seleccione un medidor",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Medidor") },
@@ -356,7 +357,7 @@ class PantallaLecturas {
                             onDismissRequest = { expandedMedidorDropdown = false }
                         ) {
                             medidoresCliente.forEach { medidor ->
-                                DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                                DropdownMenuItem(text = { Text("Código: ${medidor.getCodigo()} - Dirección: ${medidor.getDireccionSuministro()}") }, onClick = {
                                     selectedMedidor = medidor
                                     expandedMedidorDropdown = false
                                 })
@@ -373,12 +374,33 @@ class PantallaLecturas {
                             label = { Text("Año") },
                             modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
-                            value = mes,
-                            onValueChange = { mes = it },
-                            label = { Text("Mes") },
+                        // Selector de Mes
+                        ExposedDropdownMenuBox(
+                            expanded = expandedMesDropdown,
+                            onExpandedChange = { expandedMesDropdown = !expandedMesDropdown },
                             modifier = Modifier.weight(1f)
-                        )
+                        ) {
+                            OutlinedTextField(
+                                value = selectedMes ?: "Seleccione un mes",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Mes") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMesDropdown) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expandedMesDropdown,
+                                onDismissRequest = { expandedMesDropdown = false }
+                            ) {
+                                meses.forEach { mes ->
+                                    DropdownMenuItem(text = { Text(mes) }, onClick = {
+                                        selectedMes = mes
+                                        expandedMesDropdown = false
+                                    })
+                                }
+                            }
+                        }
                     }
                     OutlinedTextField(
                         value = consumo,
@@ -400,7 +422,7 @@ class PantallaLecturas {
                         Button(
                             onClick = {
                                 val anioInt = anio.toIntOrNull()
-                                val mesInt = mes.toIntOrNull()
+                                val mesInt = selectedMes?.let { meses.indexOf(it) + 1 }
                                 val consumoDouble = consumo.toDoubleOrNull()
 
                                 if (rutCliente.isBlank() || selectedMedidor == null || anioInt == null || mesInt == null || consumoDouble == null) {
@@ -418,9 +440,11 @@ class PantallaLecturas {
                                 calendar.set(Calendar.MILLISECOND, 0)
                                 val lecturaDate = calendar.time
 
+                                val newId = "${rutCliente}-${selectedMedidor!!.getCodigo()}-${anioInt}-${mesInt}"
+
                                 onSave(
                                     LecturaConsumo(
-                                        id = UUID.randomUUID().toString(),
+                                        id = newId,
                                         createdAt = lecturaDate,
                                         updatedAt = lecturaDate,
                                         idMedidor = selectedMedidor!!.getCodigo(),
@@ -449,7 +473,7 @@ class PantallaLecturas {
         selectedMedidor: Medidor?, onSelectedMedidorChange: (Medidor?) -> Unit,
         expandedMedidorDropdown: Boolean, onExpandedMedidorDropdownChange: (Boolean) -> Unit,
         anio: String, onAnioChange: (String) -> Unit,
-        mes: String, onMesChange: (String) -> Unit,
+        mes: String?, onMesChange: (String?) -> Unit,
         onSearch: () -> Unit,
         searchError: String?
     ) {
@@ -476,6 +500,7 @@ class PantallaLecturas {
                     value = rutCliente,
                     onValueChange = onRutClienteChange,
                     label = { Text("RUT Cliente") },
+                    placeholder = { Text("Ejemplo: 12345678-9") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -486,7 +511,7 @@ class PantallaLecturas {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                        value = selectedMedidor?.let { "Código: ${it.getCodigo()} - Dirección: ${it.getDireccionSuministro()}" } ?: "Seleccione un medidor",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Medidor") },
@@ -499,7 +524,7 @@ class PantallaLecturas {
                         onDismissRequest = { onExpandedMedidorDropdownChange(false) }
                     ) {
                         medidoresCliente.forEach { medidor ->
-                            DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                            DropdownMenuItem(text = { Text("Código: ${medidor.getCodigo()} - Dirección: ${medidor.getDireccionSuministro()}") }, onClick = {
                                 onSelectedMedidorChange(medidor)
                                 onExpandedMedidorDropdownChange(false)
                             })
@@ -515,12 +540,35 @@ class PantallaLecturas {
                         label = { Text("Año") },
                         modifier = Modifier.weight(1f)
                     )
-                    OutlinedTextField(
-                        value = mes,
-                        onValueChange = onMesChange,
-                        label = { Text("Mes") },
+                    val meses = listOf("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
+                    var expandedMesDropdown by remember { mutableStateOf(false) }
+                    val selectedMesName = remember(mes) { mes?.let { meses.getOrNull(it.toInt() - 1) } }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expandedMesDropdown,
+                        onExpandedChange = { expandedMesDropdown = !expandedMesDropdown },
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+                        OutlinedTextField(
+                            value = selectedMesName ?: "Seleccione un mes",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Mes") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMesDropdown) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedMesDropdown,
+                            onDismissRequest = { expandedMesDropdown = false }
+                        ) {
+                            meses.forEachIndexed { index, mesName ->
+                                DropdownMenuItem(text = { Text(mesName) }, onClick = {
+                                    onMesChange((index + 1).toString())
+                                    expandedMesDropdown = false
+                                })
+                            }
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 searchError?.let {
@@ -528,7 +576,7 @@ class PantallaLecturas {
                 }
                 Button(
                     onClick = onSearch,
-                    enabled = rutCliente.isNotBlank() && selectedMedidor != null,
+                    enabled = rutCliente.isNotBlank() && selectedMedidor != null && anio.isNotBlank() && mes != null,
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text("Buscar")

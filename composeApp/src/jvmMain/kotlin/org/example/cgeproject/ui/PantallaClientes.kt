@@ -66,6 +66,16 @@ class PantallaClientes {
 
     private val repo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
+    private fun validarRut(rut: String): Boolean {
+        val rutRegex = Regex("""^\d{7,8}-[\dkK]$""")
+        return rutRegex.matches(rut)
+    }
+
+    private fun validarEmail(email: String): Boolean {
+        val emailRegex = Regex("""^[A-Za-z](.*)([@]{1})(.{1,})(\.)(.{1,})""")
+        return emailRegex.matches(email)
+    }
+
     @Composable
     fun PantallaPrincipal() {
         var pantallaActual by remember { mutableStateOf(Pantalla.LISTA) }
@@ -228,7 +238,7 @@ class PantallaClientes {
         }
         var estado by remember {
             mutableStateOf(
-                clienteAEditar?.getEstado() ?: EstadoCliente.INACTIVO
+                clienteAEditar?.getEstado() ?: EstadoCliente.ACTIVO
             )
         }
         var tipoTarifa by remember { mutableStateOf(clienteAEditar?.getTipoTarifa() ?: TipoTarifa.RESIDENCIAL) }
@@ -255,7 +265,8 @@ class PantallaClientes {
                     rut,
                     onChange = { rut = it },
                     label = "Rut",
-                    enabled = clienteAEditar == null
+                    enabled = clienteAEditar == null,
+                    placeholder = "Ejemplo: 12345678-9"
                 )
                 CampoRegistroCliente(nombre, onChange = { nombre = it }, label = "Nombre")
                 CampoRegistroCliente(email, onChange = { email = it }, label = "Email")
@@ -282,6 +293,14 @@ class PantallaClientes {
                         onClick = {
                             if (rut.isBlank() || nombre.isBlank() || email.isBlank() || direccionFacturacion.isBlank()) {
                                 error = "Todos los campos son obligatorios"
+                                return@Button
+                            }
+                            if (!validarRut(rut)) {
+                                error = "El formato del RUT no es válido (ej: 12345678-9)"
+                                return@Button
+                            }
+                            if (!validarEmail(email)) {
+                                error = "El formato del correo electrónico no es válido"
                                 return@Button
                             }
                             val esCreacion = clienteAEditar == null
@@ -372,13 +391,15 @@ class PantallaClientes {
         value: String,
         onChange: (String) -> Unit,
         label: String,
-        enabled: Boolean = true
+        enabled: Boolean = true,
+        placeholder: String? = null
     ) {
         Text(text = "$label:", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = blue)
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
             label = { Text(label) },
+            placeholder = placeholder?.let { { Text(it) } },
             enabled = enabled,
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier.height(60.dp).fillMaxWidth(),
