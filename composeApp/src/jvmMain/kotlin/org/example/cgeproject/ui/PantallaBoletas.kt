@@ -18,12 +18,14 @@ import org.example.cgeproject.dominio.LecturaConsumo
 import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.persistencia.*
 import org.example.cgeproject.servicios.BoletaService
+import org.example.cgeproject.servicios.EmailService
 import org.example.cgeproject.servicios.PdfService
 import org.example.cgeproject.servicios.TarifaService
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.swing.JFileChooser
+import javax.swing.JOptionPane
 
 // Enum para controlar la navegación entre pantallas
 private enum class PantallaBoleta {
@@ -36,6 +38,7 @@ class PantallaBoletas {
     private val backgroundColor = Color(0xFFF1F5FA)
 
     private val boletaService: BoletaService
+    private val emailService: EmailService
     private val repo: BoletaRepoImpl
     private val medidorRepo: MedidorRepoImpl
     private val lecturaRepo: LecturaRepoImpl
@@ -49,6 +52,7 @@ class PantallaBoletas {
         repo = BoletaRepoImpl(persistencia)
         val tarifaService = TarifaService()
         val pdfService = PdfService()
+        emailService = EmailService()
         boletaService = BoletaService(clienteRepo, medidorRepo, lecturaRepo, repo, tarifaService, pdfService)
     }
 
@@ -160,6 +164,26 @@ class PantallaBoletas {
                     fileChooser.selectedFile = File("boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf")
                     if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
                         fileChooser.selectedFile.writeBytes(pdfBytes)
+                    }
+                },
+                onSendEmail = {
+                    val pdfBytes = boletaService.exportarPdfClienteMes(it.getIdCliente(), it.getMes(), it.getAnio())
+                    val cliente = clienteRepo.obtenerPorRut(it.getIdCliente())
+                    if (cliente != null && cliente.getEmail().isNotBlank()) {
+                        try {
+                            emailService.enviarBoletaPorCorreo(
+                                cliente.getEmail(),
+                                "Boleta CGE ${it.getMes()}/${it.getAnio()}",
+                                "Estimado(a) ${cliente.getNombre()}, Adjuntamos su boleta del mes ${it.getMes()} del año ${it.getAnio()}.",
+                                pdfBytes,
+                                "boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf"
+                            )
+                            JOptionPane.showMessageDialog(null, "Boleta enviada exitosamente a ${cliente.getEmail()}", "Envío Exitoso", JOptionPane.INFORMATION_MESSAGE)
+                        } catch (e: Exception) {
+                            JOptionPane.showMessageDialog(null, "Error al enviar el correo: ${e.message}", "Error de Envío", JOptionPane.ERROR_MESSAGE)
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(null, "El cliente no tiene un correo electrónico registrado o es inválido.", "Error", JOptionPane.ERROR_MESSAGE)
                     }
                 }
             )
@@ -550,7 +574,7 @@ class PantallaBoletas {
 
     /** Ventana de detalle de boleta */
     @Composable
-    private fun DetalleBoletaDialog(boleta: Boleta, onDismiss: () -> Unit, onGeneratePdf: () -> Unit) {
+    private fun DetalleBoletaDialog(boleta: Boleta, onDismiss: () -> Unit, onGeneratePdf: () -> Unit, onSendEmail: () -> Unit) {
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Detalle de Boleta (${boleta.getMes()}/${boleta.getAnio()})") },
@@ -573,11 +597,15 @@ class PantallaBoletas {
                 }
             },
             confirmButton = {
-                Row {
+                Row(modifier = Modifier.padding(8.dp)) {
                     Button(onClick = onGeneratePdf, colors = ButtonDefaults.buttonColors(containerColor = blue)) {
                         Text("Generar PDF")
                     }
                     Spacer(Modifier.width(8.dp))
+                    Button(onClick = onSendEmail, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C))) {
+                        Text("Enviar Email")
+                    }
+                    Spacer(Modifier.weight(1f))
                     TextButton(onClick = onDismiss) { Text("Cerrar") }
                 }
             }

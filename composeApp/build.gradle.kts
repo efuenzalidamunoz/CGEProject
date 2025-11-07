@@ -30,6 +30,8 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation("com.sun.mail:javax.mail:1.6.2")
+            implementation("javax.activation:activation:1.1.1")
         }
     }
 }
