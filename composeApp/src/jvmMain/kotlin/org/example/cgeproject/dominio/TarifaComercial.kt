@@ -20,12 +20,8 @@ class TarifaComercial(
     }
 
 
-    /**
-     * Calcula el costo total de la energía para una cantidad de kWh consumidos,
-     * aplicando el cargo fijo, el precio por kWh, el recargo comercial y el IVA.
-     * @param kwh La cantidad de kilovatios-hora consumidos.
-     * @return Un objeto TarifaDetalle con el desglose del cálculo.
-     */
+    /** Calcula el costo total de la energía para una cantidad de kWh consumidos,
+     * aplicando el cargo fijo, el precio por kWh, el recargo comercial y el IVA. */
     override fun calcular(kwh: Double): TarifaDetalle {
         val costoConsumo = kwh * precioKwh
         val montoRecargo = (costoConsumo + cargoFijo) * recargoComercial

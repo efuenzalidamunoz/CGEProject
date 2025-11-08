@@ -15,3 +15,4 @@ rut,nombre,email,direccionFacturacion,estado,tipoTarifa
 21234567-8,Matías Morales,matias.morales@email.com,Pasaje Las Acacias 3,ACTIVO,RESIDENCIAL
 23456789-1,Isidora Castro,isidora.castro@email.com,Calle Los Aromos 55,INACTIVO,COMERCIAL
 24567890-2,Benjamín Ortiz,benjamin.ortiz@email.com,Avenida Principal 200,ACTIVO,RESIDENCIAL
+22125265-8,m,m@gmail.com,sanja,ACTIVO,RESIDENCIAL

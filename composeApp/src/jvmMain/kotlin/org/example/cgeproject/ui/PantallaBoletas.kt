@@ -233,6 +233,7 @@ class PantallaBoletas {
         }
     }
 
+    /** Muestra una superposición de carga con un indicador de progreso circular. */
     @Composable
     private fun LoadingOverlay(isLoading: Boolean) {
         if (isLoading) {

@@ -4,8 +4,8 @@ import java.util.Date
 
 open class EntidadBase(
     private val id: String,
-    private val createdAt: Date, // Tipo corregido
-    private val updatedAt: Date  // Tipo corregido
+    private val createdAt: Date,
+    private val updatedAt: Date
 ) {
     /** Getters **/
     fun getId(): String = id
