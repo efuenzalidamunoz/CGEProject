@@ -1,2 +1,17 @@
 rut,nombre,email,direccionFacturacion,estado,tipoTarifa
-220016145,Emerson,as,dsa,ACTIVO,RESIDENCIAL
+22001614-5,Emerson,iyt7826ñ2@laoia.com,Hualañe,ACTIVO,RESIDENCIAL
+1-9,Junaito,memo.fuenzalida@gmail.com,12 sur,ACTIVO,RESIDENCIAL
+10123456-7,Ana García,ana.garcia@email.com,Calle Falsa 123,ACTIVO,RESIDENCIAL
+11234567-8,Luis Pérez,luis.perez@email.com,Avenida Siempreviva 742,ACTIVO,COMERCIAL
+12345678-9,María Rodríguez,maria.rodriguez@email.com,Pasaje Los Lirios 45,INACTIVO,INDUSTRIAL
+13456789-0,José Fernández,jose.fernandez@email.com,Calle El Roble 890,ACTIVO,RESIDENCIAL
+14567890-1,Carla López,carla.lopez@email.com,Avenida Central 101,ACTIVO,COMERCIAL
+15678901-2,Pedro Martínez,pedro.martinez@email.com,Pasaje Las Rosas 23,INACTIVO,RESIDENCIAL
+16789012-3,Laura Gómez,laura.gomez@email.com,Calle Norte 567,ACTIVO,INDUSTRIAL
+17890123-4,Diego Díaz,diego.diaz@email.com,Avenida Sur 34,ACTIVO,RESIDENCIAL
+18901234-5,Sofía Castillo,sofia.castillo@email.com,Pasaje El Sol 9,ACTIVO,COMERCIAL
+19012345-6,Javier Reyes,javier.reyes@email.com,Calle Poniente 112,INACTIVO,RESIDENCIAL
+20123456-7,Valentina Soto,valentina.soto@email.com,Avenida Oriente 88,ACTIVO,INDUSTRIAL
+21234567-8,Matías Morales,matias.morales@email.com,Pasaje Las Acacias 3,ACTIVO,RESIDENCIAL
+23456789-1,Isidora Castro,isidora.castro@email.com,Calle Los Aromos 55,INACTIVO,COMERCIAL
+24567890-2,Benjamín Ortiz,benjamin.ortiz@email.com,Avenida Principal 200,ACTIVO,RESIDENCIAL

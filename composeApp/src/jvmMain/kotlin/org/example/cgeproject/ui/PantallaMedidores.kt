@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,8 +32,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.dominio.MedidorMonofasico
 import org.example.cgeproject.dominio.MedidorTrifasico
+import org.example.cgeproject.persistencia.ClienteRepoImpl
 import org.example.cgeproject.persistencia.FileSystemStorageDriver
 import org.example.cgeproject.persistencia.MedidorRepoImpl
 import org.example.cgeproject.persistencia.PersistenciaDatos
@@ -68,6 +69,7 @@ class PantallaMedidores {
     private val backgroundColor = Color(0xFFF1F5FA)
 
     private val repo = MedidorRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
+    private val clienteRepo = ClienteRepoImpl(PersistenciaDatos(FileSystemStorageDriver()))
 
     /** Con las funciones siguientes es posible mostrar toda la información
      * asociada a los medidores
@@ -100,13 +102,35 @@ class PantallaMedidores {
                     onSave = { medidor, rut ->
                         repo.crear(medidor, rut)
                         pantallaActual = PantallaMedidor.LISTA
-                    }
+                    },
+                    repo = repo,
+                    clienteRepo = clienteRepo
                 )
             }
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    /**
+     * Sección de encabezado para la pantalla de medidores.
+     * Muestra un título y una descripción en un fondo azul.
+     */
+    private fun HeaderSection() {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 100.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("Gestión de Medidores", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "Administra los medidores de tus clientes, asigna nuevos y consulta su información.",
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
+            }
+        }
+    }
+
     @Composable
     /** Gestiana la vizualización y busqueda de los medidores */
     private fun GestionMedidoresContent(
@@ -120,12 +144,6 @@ class PantallaMedidores {
         var medidorParaEliminar by remember { mutableStateOf<Medidor?>(null) }
 
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Gestión de Medidores", color = Color.White) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)
-                )
-            },
             floatingActionButton = {
                 FloatingActionButton(onClick = onNavigateToForm, containerColor = blue) {
                     Text("+", color = Color.White, fontSize = 24.sp)
@@ -137,9 +155,13 @@ class PantallaMedidores {
                     .fillMaxSize()
                     .background(backgroundColor)
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                HeaderSection()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = {
@@ -147,17 +169,17 @@ class PantallaMedidores {
                         medidoresFiltrados = onSearch(it)
                     },
                     label = { Text("Buscar por RUT de Cliente o Código de Medidor") },
-                    modifier = Modifier.fillMaxWidth(0.7f)
-
+                    modifier = Modifier.fillMaxWidth(0.7f),
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(),
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.7f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(medidoresFiltrados) { medidor ->
+                    medidoresFiltrados.forEach { medidor ->
                         MedidorItem(
                             medidor = medidor,
                             onClick = { medidorParaDetalle = medidor },
@@ -185,20 +207,30 @@ class PantallaMedidores {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     /** Este es el formualario de captura de contenido de los medidores */
     private fun FormularioMedidorContent(
         onNavigateBack: () -> Unit,
-        onSave: (Medidor, String) -> Unit
+        onSave: (Medidor, String) -> Unit,
+        repo: MedidorRepoImpl,
+        clienteRepo: ClienteRepoImpl
     ) {
-        var codigo by remember { mutableStateOf("") }
         var tipo by remember { mutableStateOf(TipoMedidor.MONOFASICO) }
         var rutCliente by remember { mutableStateOf("") }
         var direccion by remember { mutableStateOf("") }
         var potencia by remember { mutableStateOf("") }
         var factorPotencia by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
+        var clienteExiste by remember { mutableStateOf<Boolean?>(null) }
+
+
+        LaunchedEffect(rutCliente) {
+            if (rutCliente.isNotBlank()) {
+                clienteExiste = clienteRepo.listar().any { it.getRut() == rutCliente }
+            } else {
+                clienteExiste = null
+            }
+        }
 
         LaunchedEffect(tipo) {
             if (tipo == TipoMedidor.MONOFASICO) {
@@ -226,28 +258,36 @@ class PantallaMedidores {
                     Spacer(modifier = Modifier.height(24.dp))
 
                     OutlinedTextField(
-                        value = codigo,
-                        onValueChange = { codigo = it },
-                        label = { Text("Código Medidor") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
                         value = rutCliente,
                         onValueChange = { rutCliente = it },
                         label = { Text("RUT Cliente") },
-                        modifier = Modifier.fillMaxWidth()
+                        placeholder = { Text("Ejemplo: 12345678-9") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
+
+                    if (clienteExiste != null) {
+                        Text(
+                            if (clienteExiste == true) "El cliente existe." else "El cliente no existe.",
+                            color = if (clienteExiste == true) blue else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+
+
                     OutlinedTextField(
                         value = direccion,
                         onValueChange = { direccion = it },
                         label = { Text("Dirección Suministro") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                     OutlinedTextField(
                         value = potencia,
                         onValueChange = { potencia = it },
                         label = { Text("Potencia Max (kW)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     SelectorTipoMedidor(tipo, onSelect = { tipo = it })
@@ -257,7 +297,8 @@ class PantallaMedidores {
                         onValueChange = { factorPotencia = it },
                         label = { Text("Factor de Potencia (ej. 0.95)") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = tipo == TipoMedidor.TRIFASICO
+                        enabled = tipo == TipoMedidor.TRIFASICO,
+                        singleLine = true
                     )
 
                     error?.let {
@@ -275,8 +316,13 @@ class PantallaMedidores {
                                 val pot = potencia.toDoubleOrNull()
                                 val factor = factorPotencia.toDoubleOrNull()
 
-                                if (codigo.isBlank() || rutCliente.isBlank() || direccion.isBlank() || pot == null) {
+                                if (rutCliente.isBlank() || direccion.isBlank() || pot == null) {
                                     error = "Todos los campos obligatorios deben completarse y la potencia debe ser un número."
+                                    return@Button
+                                }
+
+                                if (clienteExiste != true) {
+                                    error = "No existe un cliente con el RUT ingresado."
                                     return@Button
                                 }
 
@@ -285,13 +331,21 @@ class PantallaMedidores {
                                     return@Button
                                 }
 
+                                val medidoresCliente = repo.listarPorCliente(rutCliente)
+                                val maxSuffix = medidoresCliente
+                                    .mapNotNull { medidor ->
+                                        medidor.getCodigo().substringAfterLast('-', "").toIntOrNull()
+                                    }
+                                    .maxOrNull() ?: 0
+                                val nuevoCodigo = "${rutCliente}-${maxSuffix + 1}"
+
                                 val now = Date()
                                 val medidor = when (tipo) {
                                     TipoMedidor.MONOFASICO -> MedidorMonofasico(
                                         UUID.randomUUID().toString(),
                                         now,
                                         now,
-                                        codigo,
+                                        nuevoCodigo,
                                         direccion,
                                         true,
                                         "",
@@ -302,7 +356,7 @@ class PantallaMedidores {
                                         UUID.randomUUID().toString(),
                                         now,
                                         now,
-                                        codigo,
+                                        nuevoCodigo,
                                         direccion,
                                         true,
                                         "",
@@ -339,7 +393,8 @@ class PantallaMedidores {
                     readOnly = true,
                     value = selected.str,
                     onValueChange = { },
-                    label = { Text("Tipo de Medidor") }
+                    label = { Text("Tipo de Medidor") },
+                    singleLine = true
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,

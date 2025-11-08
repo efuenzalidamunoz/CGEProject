@@ -13,17 +13,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.example.cgeproject.dominio.Boleta
-import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.dominio.LecturaConsumo
+import org.example.cgeproject.dominio.Medidor
 import org.example.cgeproject.persistencia.*
 import org.example.cgeproject.servicios.BoletaService
+import org.example.cgeproject.servicios.EmailService
 import org.example.cgeproject.servicios.PdfService
 import org.example.cgeproject.servicios.TarifaService
 import java.io.File
-import javax.swing.JFileChooser
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.*
+import javax.swing.JFileChooser
+import javax.swing.JOptionPane
 
 // Enum para controlar la navegación entre pantallas
 private enum class PantallaBoleta {
@@ -36,18 +43,21 @@ class PantallaBoletas {
     private val backgroundColor = Color(0xFFF1F5FA)
 
     private val boletaService: BoletaService
+    private val emailService: EmailService
     private val repo: BoletaRepoImpl
     private val medidorRepo: MedidorRepoImpl
     private val lecturaRepo: LecturaRepoImpl
+    private val clienteRepo: ClienteRepoImpl
 
     init {
         val persistencia = PersistenciaDatos(FileSystemStorageDriver())
-        val clienteRepo = ClienteRepoImpl(persistencia)
+        clienteRepo = ClienteRepoImpl(persistencia)
         medidorRepo = MedidorRepoImpl(persistencia)
         lecturaRepo = LecturaRepoImpl(persistencia)
         repo = BoletaRepoImpl(persistencia)
         val tarifaService = TarifaService()
         val pdfService = PdfService()
+        emailService = EmailService()
         boletaService = BoletaService(clienteRepo, medidorRepo, lecturaRepo, repo, tarifaService, pdfService)
     }
 
@@ -77,12 +87,16 @@ class PantallaBoletas {
     }
 
     @Composable
+    /** Enlista en una tabla todo el contenido de las boletas */
     private fun ListarBoletasContent(onNavigateToForm: () -> Unit) {
         var idCliente by remember { mutableStateOf("") }
         var boletas by remember { mutableStateOf<List<Boleta>>(emptyList()) }
         var boletaParaDetalle by remember { mutableStateOf<Boleta?>(null) }
         var boletaParaEliminar by remember { mutableStateOf<Boleta?>(null) }
         var busquedaRealizada by remember { mutableStateOf(false) }
+        var errorBusqueda by remember { mutableStateOf<String?>(null) }
+        var isSendingEmail by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
 
         Scaffold(
             floatingActionButton = {
@@ -103,24 +117,51 @@ class PantallaBoletas {
                 Spacer(modifier = Modifier.height(32.dp))
                 BodyBusqueda(
                     idCliente = idCliente,
-                    onIdClienteChange = { idCliente = it },
+                    onIdClienteChange = {
+                        idCliente = it
+                        busquedaRealizada = false
+                        errorBusqueda = null
+                    },
                     onSearch = {
-                        boletas = repo.listarPorCliente(idCliente)
                         busquedaRealizada = true
+                        if (clienteRepo.obtenerPorRut(idCliente) == null) {
+                            errorBusqueda = "No se encontró un cliente con el RUT proporcionado."
+                            boletas = emptyList()
+                        } else {
+                            errorBusqueda = null
+                            boletas = repo.listarPorCliente(idCliente)
+                        }
                     }
                 )
 
                 if (busquedaRealizada) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    MostrarTablaBoletas(
-                        idCliente,
-                        boletas,
-                        onVerDetalle = { boletaParaDetalle = it },
-                        onEliminarBoleta = { boletaParaEliminar = it } // Pasar la función para eliminar
-                    )
+                    if (errorBusqueda != null) {
+                        ElevatedCard(
+                            modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp)
+                        ) {
+                            Text(
+                                text = errorBusqueda!!,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally)
+                            )
+                        }
+                    } else {
+                        MostrarTablaBoletas(
+                            idCliente,
+                            boletas,
+                            onVerDetalle = { boletaParaDetalle = it },
+                            onEliminarBoleta = { boletaParaEliminar = it }
+                        )
+                    }
                 }
             }
         }
+
+        LoadingOverlay(isLoading = isSendingEmail)
 
         boletaParaDetalle?.let {
             DetalleBoletaDialog(
@@ -132,6 +173,35 @@ class PantallaBoletas {
                     fileChooser.selectedFile = File("boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf")
                     if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
                         fileChooser.selectedFile.writeBytes(pdfBytes)
+                    }
+                },
+                onSendEmail = {
+                    coroutineScope.launch {
+                        isSendingEmail = true
+                        try {
+                            val pdfBytes = withContext(Dispatchers.IO) {
+                                boletaService.exportarPdfClienteMes(it.getIdCliente(), it.getMes(), it.getAnio())
+                            }
+                            val cliente = clienteRepo.obtenerPorRut(it.getIdCliente())
+                            if (cliente != null && cliente.getEmail().isNotBlank()) {
+                                withContext(Dispatchers.IO) {
+                                    emailService.enviarBoletaPorCorreo(
+                                        cliente.getEmail(),
+                                        "Boleta CGE ${it.getMes()}/${it.getAnio()}",
+                                        "Estimado(a) ${cliente.getNombre()}, Adjuntamos su boleta del mes ${it.getMes()} del año ${it.getAnio()}.",
+                                        pdfBytes,
+                                        "boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf"
+                                    )
+                                }
+                                JOptionPane.showMessageDialog(null, "Boleta enviada exitosamente a ${cliente.getEmail()}", "Envío Exitoso", JOptionPane.INFORMATION_MESSAGE)
+                            } else {
+                                JOptionPane.showMessageDialog(null, "El cliente no tiene un correo electrónico registrado o es inválido.", "Error", JOptionPane.ERROR_MESSAGE)
+                            }
+                        } catch (e: Exception) {
+                            JOptionPane.showMessageDialog(null, "Error al enviar el correo: ${e.message}", "Error de Envío", JOptionPane.ERROR_MESSAGE)
+                        } finally {
+                            isSendingEmail = false
+                        }
                     }
                 }
             )
@@ -163,8 +233,28 @@ class PantallaBoletas {
         }
     }
 
+    @Composable
+    private fun LoadingOverlay(isLoading: Boolean) {
+        if (isLoading) {
+            Dialog(
+                onDismissRequest = {},
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = blue)
+                }
+            }
+        }
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
+    /** Captura todos los datos necesarios para la boleta */
     private fun FormularioBoletaContent(
         onNavigateBack: () -> Unit,
         onSaveBoleta: (String, String, Int, Int, Double) -> Unit,
@@ -173,7 +263,6 @@ class PantallaBoletas {
     ) {
         var rut by remember { mutableStateOf("") }
         var anio by remember { mutableStateOf("") }
-        var mes by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
 
         var medidoresCliente by remember { mutableStateOf<List<Medidor>>(emptyList()) }
@@ -188,7 +277,7 @@ class PantallaBoletas {
         LaunchedEffect(rut) {
             if (rut.isNotBlank()) {
                 medidoresCliente = medidorRepo.listarPorCliente(rut)
-                selectedMedidor = medidoresCliente.firstOrNull()
+                selectedMedidor = null // No pre-seleccionar
                 if (medidoresCliente.isEmpty()) {
                     error = "No se encontraron medidores para el RUT proporcionado."
                 } else {
@@ -204,15 +293,19 @@ class PantallaBoletas {
             selectedLectura = null
         }
 
-        // Efecto para cargar lecturas cuando el medidor, año o mes cambian
-        LaunchedEffect(selectedMedidor, anio, mes) {
+        // Efecto para cargar lecturas cuando el medidor o año cambian
+        LaunchedEffect(selectedMedidor, anio) {
             val anioInt = anio.toIntOrNull()
-            val mesInt = mes.toIntOrNull()
-            if (selectedMedidor != null && anioInt != null && mesInt != null) {
-                lecturasDisponibles = lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mesInt)
-                selectedLectura = null // Clear selected reading when the list changes
+            if (selectedMedidor != null && anioInt != null) {
+                // Iterar por todos los meses para obtener las lecturas del año
+                val lecturasDelAnio = mutableListOf<LecturaConsumo>()
+                (1..12).forEach { mes ->
+                    lecturasDelAnio.addAll(lecturaRepo.listarPorMedidorMes(selectedMedidor!!.getCodigo(), anioInt, mes))
+                }
+                lecturasDisponibles = lecturasDelAnio.sortedBy { it.getCreatedAt() }
+                selectedLectura = null // No pre-seleccionar
                 if (lecturasDisponibles.isEmpty()) {
-                    error = "No se encontraron lecturas para el medidor y período seleccionados."
+                    error = "No se encontraron lecturas para el medidor y año seleccionados."
                 } else {
                     error = null
                 }
@@ -220,7 +313,7 @@ class PantallaBoletas {
                 lecturasDisponibles = emptyList()
                 selectedLectura = null
                 // No limpiar el error si ya existe uno por falta de medidores o RUT
-                if (error == "No se encontraron lecturas para el medidor y período seleccionados.") {
+                if (error == "No se encontraron lecturas para el medidor y año seleccionados.") {
                     error = null
                 }
             }
@@ -245,7 +338,9 @@ class PantallaBoletas {
                         value = rut,
                         onValueChange = { rut = it },
                         label = { Text("RUT Cliente") },
-                        modifier = Modifier.fillMaxWidth()
+                        placeholder = { Text("Ejemplo: 12345678-9") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -257,12 +352,13 @@ class PantallaBoletas {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = selectedMedidor?.getCodigo() ?: "Seleccione un medidor",
+                            value = selectedMedidor?.let { "Código: ${it.getCodigo()} - Dirección: ${it.getDireccionSuministro()}" } ?: "Seleccione un medidor",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Medidor") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            singleLine = true
                         )
 
                         ExposedDropdownMenu(
@@ -270,7 +366,7 @@ class PantallaBoletas {
                             onDismissRequest = { expandedMedidorDropdown = false }
                         ) {
                             medidoresCliente.forEach { medidor ->
-                                DropdownMenuItem(text = { Text(medidor.getCodigo()) }, onClick = {
+                                DropdownMenuItem(text = { Text("Código: ${medidor.getCodigo()} - Dirección: ${medidor.getDireccionSuministro()}") }, onClick = {
                                     selectedMedidor = medidor
                                     expandedMedidorDropdown = false
                                 })
@@ -284,13 +380,8 @@ class PantallaBoletas {
                         value = anio,
                         onValueChange = { anio = it },
                         label = { Text("Año (YYYY)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = mes,
-                        onValueChange = { mes = it },
-                        label = { Text("Mes (1-12)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -307,7 +398,8 @@ class PantallaBoletas {
                             readOnly = true,
                             label = { Text("Lectura") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLecturaDropdown) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            singleLine = true
                         )
 
                         ExposedDropdownMenu(
@@ -336,7 +428,6 @@ class PantallaBoletas {
                         Button(
                             onClick = {
                                 val anioInt = anio.toIntOrNull()
-                                val mesInt = mes.toIntOrNull()
 
                                 if (rut.isBlank()) {
                                     error = "El RUT del cliente es obligatorio."
@@ -350,17 +441,29 @@ class PantallaBoletas {
                                     error = "El año es obligatorio y debe ser un número válido."
                                     return@Button
                                 }
-                                if (mesInt == null) {
-                                    error = "El mes es obligatorio y debe ser un número válido."
-                                    return@Button
-                                }
                                 if (selectedLectura == null) {
                                     error = "Debe seleccionar una lectura."
                                     return@Button
                                 }
 
+                                val cal = Calendar.getInstance()
+                                cal.time = selectedLectura!!.getCreatedAt()
+                                val mesDeLectura = cal.get(Calendar.MONTH) + 1
+                                val anioDeLectura = cal.get(Calendar.YEAR)
+
+                                if (anioDeLectura != anioInt) {
+                                    error = "El año de la lectura ($anioDeLectura) no coincide con el año ingresado ($anioInt)."
+                                    return@Button
+                                }
+
                                 try {
-                                    onSaveBoleta(rut, selectedMedidor!!.getCodigo(), anioInt, mesInt, selectedLectura!!.getKwhLeidos())
+                                    onSaveBoleta(
+                                        rut,
+                                        selectedMedidor!!.getCodigo(),
+                                        anioDeLectura,
+                                        mesDeLectura,
+                                        selectedLectura!!.getKwhLeidos()
+                                    )
                                 } catch (e: Exception) {
                                     error = e.message ?: "Error desconocido al emitir la boleta."
                                 }
@@ -375,13 +478,15 @@ class PantallaBoletas {
         }
     }
 
-    // --- Composables del diseño original (Reutilizados y adaptados) ---
-
     @Composable
+    /**
+     * Sección de encabezado para la pantalla de boletas.
+     * Muestra un título y una descripción en un fondo azul.
+     */
     private fun HeaderSection() {
-        Box(modifier = Modifier.fillMaxWidth().height(400.dp).background(blue)) {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
             Column(
-                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(100.dp),
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 200.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text("Detalle de boleta", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
@@ -395,6 +500,8 @@ class PantallaBoletas {
     }
 
     @Composable
+
+    /** Permite al usuario ingresar el rut del cliente y buscar las boletas asociadas */
     private fun BodyBusqueda(idCliente: String, onIdClienteChange: (String) -> Unit, onSearch: () -> Unit) {
         ElevatedCard(
             modifier = Modifier.padding(24.dp).fillMaxWidth(0.7f),
@@ -412,8 +519,10 @@ class PantallaBoletas {
                 OutlinedTextField(
                     value = idCliente,
                     onValueChange = onIdClienteChange,
-                    label = { Text("Ingresar el número de cliente") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("RUT Cliente") },
+                    placeholder = { Text("Ejemplo: 12345678-9") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
@@ -428,6 +537,7 @@ class PantallaBoletas {
     }
 
     @Composable
+    /** Enlista las boletas */
     private fun MostrarTablaBoletas(
         idCliente: String,
         boletas: List<Boleta>,
@@ -470,11 +580,13 @@ class PantallaBoletas {
     }
 
     @Composable
+    /** Formato de la tabla boleta */
     private fun HeaderTabla(text: String, modifier: Modifier = Modifier) {
         Text(text, fontWeight = FontWeight.Bold, color = blue, modifier = modifier)
     }
 
     @Composable
+    /** Formato de las filas de la tabla boleta */
     private fun FilasTabla(boleta: Boleta, onVerDetalle: (Boleta) -> Unit, onEliminarBoleta: (Boleta) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("${boleta.getMes()}/${boleta.getAnio()}", modifier = Modifier.weight(1f))
@@ -504,7 +616,7 @@ class PantallaBoletas {
 
     /** Ventana de detalle de boleta */
     @Composable
-    private fun DetalleBoletaDialog(boleta: Boleta, onDismiss: () -> Unit, onGeneratePdf: () -> Unit) {
+    private fun DetalleBoletaDialog(boleta: Boleta, onDismiss: () -> Unit, onGeneratePdf: () -> Unit, onSendEmail: () -> Unit) {
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text("Detalle de Boleta (${boleta.getMes()}/${boleta.getAnio()})") },
@@ -527,17 +639,22 @@ class PantallaBoletas {
                 }
             },
             confirmButton = {
-                Row {
+                Row(modifier = Modifier.padding(8.dp)) {
                     Button(onClick = onGeneratePdf, colors = ButtonDefaults.buttonColors(containerColor = blue)) {
                         Text("Generar PDF")
                     }
                     Spacer(Modifier.width(8.dp))
+                    Button(onClick = onSendEmail, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00695C))) {
+                        Text("Enviar Email")
+                    }
+                    Spacer(Modifier.weight(1f))
                     TextButton(onClick = onDismiss) { Text("Cerrar") }
                 }
             }
         )
     }
 
+    /** Formato de la lectura */
     private fun formatLecturaForDisplay(lectura: LecturaConsumo): String {
         val formatter = SimpleDateFormat("dd/MM/yyyy")
         return "Fecha: ${formatter.format(lectura.getCreatedAt())}, Consumo: ${"%.2f".format(lectura.getKwhLeidos())} kWh"
