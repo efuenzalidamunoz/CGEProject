@@ -1,5 +1,6 @@
 package org.example.cgeproject.servicios
 
+import org.example.cgeproject.BuildConfig
 import java.util.*
 import javax.activation.DataHandler
 import javax.mail.*
@@ -18,11 +19,8 @@ class EmailService {
         put("mail.smtp.starttls.enable", "true")
     }
 
-    // TODO: Reemplaza la contraseña por una contraseña de aplicación de Google.
-    // Es más seguro que usar tu contraseña principal.
-    // Busca "Contraseñas de aplicaciones Google" para más información.
-    private val emailFrom = ""
-    private val password = ""
+    private val emailFrom = BuildConfig.EMAIL_FROM
+    private val password = BuildConfig.EMAIL_PASSWORD
 
     private val authenticator: Authenticator = object : Authenticator() {
         override fun getPasswordAuthentication(): PasswordAuthentication {

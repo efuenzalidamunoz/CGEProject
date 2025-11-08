@@ -13,6 +13,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.example.cgeproject.dominio.Boleta
 import org.example.cgeproject.dominio.LecturaConsumo
 import org.example.cgeproject.dominio.Medidor
@@ -90,6 +95,8 @@ class PantallaBoletas {
         var boletaParaEliminar by remember { mutableStateOf<Boleta?>(null) }
         var busquedaRealizada by remember { mutableStateOf(false) }
         var errorBusqueda by remember { mutableStateOf<String?>(null) }
+        var isSendingEmail by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
 
         Scaffold(
             floatingActionButton = {
@@ -154,6 +161,8 @@ class PantallaBoletas {
             }
         }
 
+        LoadingOverlay(isLoading = isSendingEmail)
+
         boletaParaDetalle?.let {
             DetalleBoletaDialog(
                 boleta = it,
@@ -167,23 +176,32 @@ class PantallaBoletas {
                     }
                 },
                 onSendEmail = {
-                    val pdfBytes = boletaService.exportarPdfClienteMes(it.getIdCliente(), it.getMes(), it.getAnio())
-                    val cliente = clienteRepo.obtenerPorRut(it.getIdCliente())
-                    if (cliente != null && cliente.getEmail().isNotBlank()) {
+                    coroutineScope.launch {
+                        isSendingEmail = true
                         try {
-                            emailService.enviarBoletaPorCorreo(
-                                cliente.getEmail(),
-                                "Boleta CGE ${it.getMes()}/${it.getAnio()}",
-                                "Estimado(a) ${cliente.getNombre()}, Adjuntamos su boleta del mes ${it.getMes()} del año ${it.getAnio()}.",
-                                pdfBytes,
-                                "boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf"
-                            )
-                            JOptionPane.showMessageDialog(null, "Boleta enviada exitosamente a ${cliente.getEmail()}", "Envío Exitoso", JOptionPane.INFORMATION_MESSAGE)
+                            val pdfBytes = withContext(Dispatchers.IO) {
+                                boletaService.exportarPdfClienteMes(it.getIdCliente(), it.getMes(), it.getAnio())
+                            }
+                            val cliente = clienteRepo.obtenerPorRut(it.getIdCliente())
+                            if (cliente != null && cliente.getEmail().isNotBlank()) {
+                                withContext(Dispatchers.IO) {
+                                    emailService.enviarBoletaPorCorreo(
+                                        cliente.getEmail(),
+                                        "Boleta CGE ${it.getMes()}/${it.getAnio()}",
+                                        "Estimado(a) ${cliente.getNombre()}, Adjuntamos su boleta del mes ${it.getMes()} del año ${it.getAnio()}.",
+                                        pdfBytes,
+                                        "boleta_${it.getIdCliente()}_${it.getAnio()}_${it.getMes()}.pdf"
+                                    )
+                                }
+                                JOptionPane.showMessageDialog(null, "Boleta enviada exitosamente a ${cliente.getEmail()}", "Envío Exitoso", JOptionPane.INFORMATION_MESSAGE)
+                            } else {
+                                JOptionPane.showMessageDialog(null, "El cliente no tiene un correo electrónico registrado o es inválido.", "Error", JOptionPane.ERROR_MESSAGE)
+                            }
                         } catch (e: Exception) {
                             JOptionPane.showMessageDialog(null, "Error al enviar el correo: ${e.message}", "Error de Envío", JOptionPane.ERROR_MESSAGE)
+                        } finally {
+                            isSendingEmail = false
                         }
-                    } else {
-                        JOptionPane.showMessageDialog(null, "El cliente no tiene un correo electrónico registrado o es inválido.", "Error", JOptionPane.ERROR_MESSAGE)
                     }
                 }
             )
@@ -212,6 +230,25 @@ class PantallaBoletas {
                     }
                 }
             )
+        }
+    }
+
+    @Composable
+    private fun LoadingOverlay(isLoading: Boolean) {
+        if (isLoading) {
+            Dialog(
+                onDismissRequest = {},
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = blue)
+                }
+            }
         }
     }
 
@@ -302,7 +339,8 @@ class PantallaBoletas {
                         onValueChange = { rut = it },
                         label = { Text("RUT Cliente") },
                         placeholder = { Text("Ejemplo: 12345678-9") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -319,7 +357,8 @@ class PantallaBoletas {
                             readOnly = true,
                             label = { Text("Medidor") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            singleLine = true
                         )
 
                         ExposedDropdownMenu(
@@ -341,7 +380,8 @@ class PantallaBoletas {
                         value = anio,
                         onValueChange = { anio = it },
                         label = { Text("Año (YYYY)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -358,7 +398,8 @@ class PantallaBoletas {
                             readOnly = true,
                             label = { Text("Lectura") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLecturaDropdown) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            singleLine = true
                         )
 
                         ExposedDropdownMenu(
@@ -443,9 +484,9 @@ class PantallaBoletas {
      * Muestra un título y una descripción en un fondo azul.
      */
     private fun HeaderSection() {
-        Box(modifier = Modifier.fillMaxWidth().height(400.dp).background(blue)) {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
             Column(
-                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(100.dp),
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 200.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text("Detalle de boleta", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
@@ -480,7 +521,8 @@ class PantallaBoletas {
                     onValueChange = onIdClienteChange,
                     label = { Text("RUT Cliente") },
                     placeholder = { Text("Ejemplo: 12345678-9") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(

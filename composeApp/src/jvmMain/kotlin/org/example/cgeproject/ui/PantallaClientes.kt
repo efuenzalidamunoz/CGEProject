@@ -35,8 +35,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,7 +70,7 @@ class PantallaClientes {
     }
 
     private fun validarEmail(email: String): Boolean {
-        val emailRegex = Regex("""^[A-Za-z](.*)([@]{1})(.{1,})(\.)(.{1,})""")
+        val emailRegex = Regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\$")
         return emailRegex.matches(email)
     }
 
@@ -120,8 +118,29 @@ class PantallaClientes {
         }
     }
 
+    @Composable
+    /**
+     * Sección de encabezado para la pantalla de clientes.
+     * Muestra un título y una descripción en un fondo azul.
+     */
+    private fun HeaderSection() {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 100.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("Gestión de Clientes", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "Aquí puedes administrar los clientes, agregar nuevos, editar existentes o eliminarlos.",
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
+            }
+        }
+    }
+
     /** Gestiona los clientes **/
-    @OptIn(ExperimentalMaterial3Api::class)
+
     @Composable
     private fun GestionClientesContent(
         clientes: List<Cliente>,
@@ -142,12 +161,6 @@ class PantallaClientes {
         }
 
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Gestión de Clientes", color = Color.White) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)
-                )
-            },
             floatingActionButton = {
                 FloatingActionButton(onClick = onAddCliente, containerColor = blue) {
                     Text("+", fontSize = 24.sp, color = Color.White)
@@ -155,10 +168,15 @@ class PantallaClientes {
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).fillMaxHeight()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(paddingValues).verticalScroll(
+                    rememberScrollState()
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                HeaderSection()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -172,13 +190,12 @@ class PantallaClientes {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(
+                Column(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.7f),
+                        .fillMaxWidth(0.7f).padding(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(clientesFiltrados) { cliente ->
+                    clientesFiltrados.forEach { cliente ->
                         ClienteItem(
                             cliente = cliente,
                             onEdit = { onEditCliente(cliente) },
@@ -269,7 +286,14 @@ class PantallaClientes {
                     placeholder = "Ejemplo: 12345678-9"
                 )
                 CampoRegistroCliente(nombre, onChange = { nombre = it }, label = "Nombre")
-                CampoRegistroCliente(email, onChange = { email = it }, label = "Email")
+                CampoRegistroCliente(
+                    email,
+                    onChange = {
+                        val filtered = it.filter { char -> char.isLetterOrDigit() || char == '@' || char == '.' || char == '-' || char == '_' }
+                        email = filtered
+                    },
+                    label = "Email"
+                )
                 CampoRegistroCliente(
                     direccionFacturacion,
                     onChange = { direccionFacturacion = it },
@@ -295,17 +319,19 @@ class PantallaClientes {
                                 error = "Todos los campos son obligatorios"
                                 return@Button
                             }
-                            if (!validarRut(rut)) {
-                                error = "El formato del RUT no es válido (ej: 12345678-9)"
-                                return@Button
+                            val esCreacion = clienteAEditar == null
+                            if (esCreacion) {
+                                if (!validarRut(rut)) {
+                                    error = "El formato del RUT no es válido (ej: 12345678-9)"
+                                    return@Button
+                                }
+                                if (repo.listar().any { it.getRut() == rut }) {
+                                    error = "Ya existe un cliente con ese RUT"
+                                    return@Button
+                                }
                             }
                             if (!validarEmail(email)) {
                                 error = "El formato del correo electrónico no es válido"
-                                return@Button
-                            }
-                            val esCreacion = clienteAEditar == null
-                            if (esCreacion && repo.listar().any { it.getRut() == rut }) {
-                                error = "Ya existe un cliente con ese RUT"
                                 return@Button
                             }
                             onSave(Cliente(rut, nombre, email, direccionFacturacion, estado, tipoTarifa))
@@ -402,7 +428,7 @@ class PantallaClientes {
             placeholder = placeholder?.let { { Text(it) } },
             enabled = enabled,
             shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.height(60.dp).fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue),
             singleLine = true
         )
@@ -433,7 +459,8 @@ class PantallaClientes {
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue)
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue),
+                singleLine = true
             )
             ExposedDropdownMenu(
                 expanded = expanded,
@@ -475,7 +502,8 @@ class PantallaClientes {
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue)
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = blue),
+                singleLine = true
             )
             ExposedDropdownMenu(
                 expanded = expanded,

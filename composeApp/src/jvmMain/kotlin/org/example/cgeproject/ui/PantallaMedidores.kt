@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,8 +32,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -110,7 +110,27 @@ class PantallaMedidores {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    /**
+     * Sección de encabezado para la pantalla de medidores.
+     * Muestra un título y una descripción en un fondo azul.
+     */
+    private fun HeaderSection() {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 100.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("Gestión de Medidores", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "Administra los medidores de tus clientes, asigna nuevos y consulta su información.",
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
+            }
+        }
+    }
+
     @Composable
     /** Gestiana la vizualización y busqueda de los medidores */
     private fun GestionMedidoresContent(
@@ -124,12 +144,6 @@ class PantallaMedidores {
         var medidorParaEliminar by remember { mutableStateOf<Medidor?>(null) }
 
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Gestión de Medidores", color = Color.White) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)
-                )
-            },
             floatingActionButton = {
                 FloatingActionButton(onClick = onNavigateToForm, containerColor = blue) {
                     Text("+", color = Color.White, fontSize = 24.sp)
@@ -141,9 +155,13 @@ class PantallaMedidores {
                     .fillMaxSize()
                     .background(backgroundColor)
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                HeaderSection()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = {
@@ -151,17 +169,17 @@ class PantallaMedidores {
                         medidoresFiltrados = onSearch(it)
                     },
                     label = { Text("Buscar por RUT de Cliente o Código de Medidor") },
-                    modifier = Modifier.fillMaxWidth(0.7f)
-
+                    modifier = Modifier.fillMaxWidth(0.7f),
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(0.7f).fillMaxHeight(),
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.7f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(medidoresFiltrados) { medidor ->
+                    medidoresFiltrados.forEach { medidor ->
                         MedidorItem(
                             medidor = medidor,
                             onClick = { medidorParaDetalle = medidor },
@@ -189,7 +207,6 @@ class PantallaMedidores {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     /** Este es el formualario de captura de contenido de los medidores */
     private fun FormularioMedidorContent(
@@ -245,7 +262,8 @@ class PantallaMedidores {
                         onValueChange = { rutCliente = it },
                         label = { Text("RUT Cliente") },
                         placeholder = { Text("Ejemplo: 12345678-9") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     if (clienteExiste != null) {
@@ -261,13 +279,15 @@ class PantallaMedidores {
                         value = direccion,
                         onValueChange = { direccion = it },
                         label = { Text("Dirección Suministro") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                     OutlinedTextField(
                         value = potencia,
                         onValueChange = { potencia = it },
                         label = { Text("Potencia Max (kW)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     SelectorTipoMedidor(tipo, onSelect = { tipo = it })
@@ -277,7 +297,8 @@ class PantallaMedidores {
                         onValueChange = { factorPotencia = it },
                         label = { Text("Factor de Potencia (ej. 0.95)") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = tipo == TipoMedidor.TRIFASICO
+                        enabled = tipo == TipoMedidor.TRIFASICO,
+                        singleLine = true
                     )
 
                     error?.let {
@@ -372,7 +393,8 @@ class PantallaMedidores {
                     readOnly = true,
                     value = selected.str,
                     onValueChange = { },
-                    label = { Text("Tipo de Medidor") }
+                    label = { Text("Tipo de Medidor") },
+                    singleLine = true
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,

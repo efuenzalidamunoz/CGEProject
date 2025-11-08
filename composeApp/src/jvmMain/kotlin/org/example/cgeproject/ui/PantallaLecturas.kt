@@ -31,8 +31,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -100,6 +98,27 @@ class PantallaLecturas {
                     },
                     clienteRepo = clienteRepo,
                     medidorRepo = medidorRepo
+                )
+            }
+        }
+    }
+
+    @Composable
+    /**
+     * Sección de encabezado para la pantalla de lecturas.
+     * Muestra un título y una descripción en un fondo azul.
+     */
+    private fun HeaderSection() {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 100.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("Lecturas de Consumo", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "Registra y consulta el historial de lecturas de consumo de los medidores.",
+                    fontSize = 14.sp,
+                    color = Color.White
                 )
             }
         }
@@ -179,12 +198,6 @@ class PantallaLecturas {
         }
 
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Lecturas de Consumo", color = Color.White) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = blue)
-                )
-            },
             floatingActionButton = {
                 FloatingActionButton(onClick = onNavigateToForm, containerColor = blue) {
                     Text("+", color = Color.White, fontSize = 24.sp)
@@ -196,10 +209,11 @@ class PantallaLecturas {
                     .fillMaxSize()
                     .background(backgroundColor)
                     .padding(paddingValues)
-                    .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                HeaderSection()
+
                 // Formulario de Búsqueda
                 SearchCard(
                     rutCliente = rutClienteBusqueda,
@@ -332,7 +346,8 @@ class PantallaLecturas {
                         onValueChange = { rutCliente = it },
                         label = { Text("RUT Cliente") },
                         placeholder = { Text("Ejemplo: 12345678-9") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -349,7 +364,8 @@ class PantallaLecturas {
                             readOnly = true,
                             label = { Text("Medidor") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            singleLine = true
                         )
 
                         ExposedDropdownMenu(
@@ -372,7 +388,8 @@ class PantallaLecturas {
                             value = anio,
                             onValueChange = { anio = it },
                             label = { Text("Año") },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
                         )
                         // Selector de Mes
                         ExposedDropdownMenuBox(
@@ -386,7 +403,8 @@ class PantallaLecturas {
                                 readOnly = true,
                                 label = { Text("Mes") },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMesDropdown) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                singleLine = true
                             )
 
                             ExposedDropdownMenu(
@@ -406,7 +424,8 @@ class PantallaLecturas {
                         value = consumo,
                         onValueChange = { consumo = it },
                         label = { Text("Consumo (kWh)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     error?.let {
@@ -501,7 +520,8 @@ class PantallaLecturas {
                     onValueChange = onRutClienteChange,
                     label = { Text("RUT Cliente") },
                     placeholder = { Text("Ejemplo: 12345678-9") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -516,7 +536,8 @@ class PantallaLecturas {
                         readOnly = true,
                         label = { Text("Medidor") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMedidorDropdown) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        singleLine = true
                     )
 
                     ExposedDropdownMenu(
@@ -538,7 +559,8 @@ class PantallaLecturas {
                         value = anio,
                         onValueChange = onAnioChange,
                         label = { Text("Año") },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
                     val meses = listOf("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
                     var expandedMesDropdown by remember { mutableStateOf(false) }
@@ -555,7 +577,8 @@ class PantallaLecturas {
                             readOnly = true,
                             label = { Text("Mes") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedMesDropdown) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            singleLine = true
                         )
                         ExposedDropdownMenu(
                             expanded = expandedMesDropdown,
@@ -593,7 +616,18 @@ class PantallaLecturas {
 
     @Composable
     private fun LastReadingCard(lectura: LecturaConsumo) {
-        ElevatedCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        ElevatedCard(
+            elevation = CardDefaults.elevatedCardElevation(
+                defaultElevation = 8.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(0.7f),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Última Lectura Registrada", style = MaterialTheme.typography.titleLarge, color = blue)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -610,7 +644,11 @@ class PantallaLecturas {
     @Composable
     /** Muestra los resultados de los consumos */
     private fun ResultsTable(lecturas: List<LecturaConsumo>, onDelete: (String) -> Unit) {
-        Column {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .padding(bottom = 24.dp)
+        ) {
             // Encabezado de la tabla
             Row(modifier = Modifier.fillMaxWidth().background(blue.copy(alpha = 0.1f)).padding(12.dp)) {
                 Text("Fecha", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = blue)
