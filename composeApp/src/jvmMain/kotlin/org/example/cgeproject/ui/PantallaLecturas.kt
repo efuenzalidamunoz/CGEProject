@@ -61,7 +61,7 @@ import java.util.Calendar
 import java.util.Date
 
 
-// --- Enum para Navegación ---
+// Enum para Navegación
 private enum class PantallaLectura {
     LISTA,
     FORMULARIO

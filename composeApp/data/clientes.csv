@@ -12,7 +12,6 @@ rut,nombre,email,direccionFacturacion,estado,tipoTarifa
 18901234-5,Sofía Castillo,sofia.castillo@email.com,Pasaje El Sol 9,ACTIVO,COMERCIAL
 19012345-6,Javier Reyes,javier.reyes@email.com,Calle Poniente 112,INACTIVO,RESIDENCIAL
 20123456-7,Valentina Soto,valentina.soto@email.com,Avenida Oriente 88,ACTIVO,INDUSTRIAL
-21234567-8,Matías Morales,matias.morales@email.com,Pasaje Las Acacias 3,ACTIVO,RESIDENCIAL
 23456789-1,Isidora Castro,isidora.castro@email.com,Calle Los Aromos 55,INACTIVO,COMERCIAL
 24567890-2,Benjamín Ortiz,benjamin.ortiz@email.com,Avenida Principal 200,ACTIVO,RESIDENCIAL
 22125265-8,m,m@gmail.com,sanja,ACTIVO,RESIDENCIAL
