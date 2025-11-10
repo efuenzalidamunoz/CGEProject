@@ -487,7 +487,7 @@ class PantallaBoletas {
     private fun HeaderSection() {
         Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(blue)) {
             Column(
-                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 200.dp),
+                modifier = Modifier.align(Alignment.CenterStart).fillMaxHeight().padding(horizontal = 100.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text("Detalle de boleta", fontSize = 40.sp, color = Color.White, fontWeight = FontWeight.Bold)
